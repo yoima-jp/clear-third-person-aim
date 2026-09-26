@@ -21,12 +21,21 @@ public final class ClearAimController {
      * @param input ワールドにいない・プレイヤーがいないときは null を渡す (即座に通常表示へ戻す)
      */
     public void tick(AimInput input) {
+        tick(input, false);
+    }
+
+    /**
+     * @param forcePreview 設定画面のプレビュー中。武器を構えていなくても発動させ、設定値の見た目をその場で確認できるようにする。
+     *                     一人称・全体スイッチ OFF のときはプレビューでも発動しない (実際の見た目と食い違わないように)。
+     */
+    public void tick(AimInput input, boolean forcePreview) {
         if (input == null) {
             active = false;
             fade.reset();
             return;
         }
-        active = AimState.shouldActivate(config, input);
+        boolean previewApplies = forcePreview && config.enabled && input.perspective() != Perspective.FIRST_PERSON;
+        active = previewApplies || AimState.shouldActivate(config, input);
         fade.tick(active, config.transition, config.fadeInMs, config.fadeOutMs);
     }
 

@@ -124,4 +124,19 @@ class MaskMathTest {
         controller.tick(new AimInput(Perspective.THIRD_PERSON_BACK, HeldItem.EMPTY, HeldItem.EMPTY, null));
         assertEquals(null, controller.frame(0.5f, 4f, 1f, false));
     }
+
+    @Test
+    void previewForcesActivationOnlyInThirdPerson() {
+        Config config = new Config();
+        config.transition = TransitionMode.INSTANT;
+        ClearAimController controller = new ClearAimController(config);
+        AimInput idleBack = new AimInput(Perspective.THIRD_PERSON_BACK, HeldItem.EMPTY, HeldItem.EMPTY, null);
+        controller.tick(idleBack, true);
+        assertTrue(controller.isActive());
+        controller.tick(new AimInput(Perspective.FIRST_PERSON, HeldItem.EMPTY, HeldItem.EMPTY, null), true);
+        assertTrue(!controller.isActive());
+        config.enabled = false;
+        controller.tick(idleBack, true);
+        assertTrue(!controller.isActive());
+    }
 }

@@ -25,6 +25,11 @@ final class ScreenshotAnalysis {
     static final double MAX_MEAN_DIFF_IDENTICAL = 2.0;
     /** 画面全体がほぼ一致するとみなす、変化ピクセルの最大割合。 */
     static final double MAX_CHANGED_FRACTION_IDENTICAL = 0.01;
+    /**
+     * 理想のブレンド画像との平均色差の上限。8bit の丸めとアンチエイリアス境界の誤差だけを許す。
+     * パーツ単位の半透明描画だと重なった内側のパーツが見えて、平均で数十の差が出る。
+     */
+    static final double MAX_MEAN_DIFF_BLEND = 8.0;
     /** 評価に使う領域の最小ピクセル数。これ未満だと統計として意味が無いのでテスト失敗にする。 */
     static final int MIN_REGION_PIXELS = 200;
 
@@ -80,6 +85,23 @@ final class ScreenshotAnalysis {
         public String toString() {
             return String.format(java.util.Locale.ROOT, "pixels=%d mean=%.2f changed=%.3f", pixels, meanDiff, changedFraction);
         }
+    }
+
+    /** actual と「front を alpha、back を 1-alpha で混ぜた理想画像」を比較する。 */
+    static RegionStats compareToBlend(BufferedImage actual, BufferedImage front, BufferedImage back, double alpha,
+                                      boolean[][] mask, BiPredicate<Integer, Integer> region) {
+        int w = actual.getWidth(), h = actual.getHeight();
+        BufferedImage expected = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int f = front.getRGB(x, y), b = back.getRGB(x, y);
+                int r = (int) Math.round(((f >> 16) & 0xFF) * alpha + ((b >> 16) & 0xFF) * (1 - alpha));
+                int g = (int) Math.round(((f >> 8) & 0xFF) * alpha + ((b >> 8) & 0xFF) * (1 - alpha));
+                int bl = (int) Math.round((f & 0xFF) * alpha + (b & 0xFF) * (1 - alpha));
+                expected.setRGB(x, y, (r << 16) | (g << 8) | bl);
+            }
+        }
+        return compare(actual, expected, mask, region);
     }
 
     /** {@code region} が真のピクセルだけで a と b を比較する。region が null なら画面全体。 */

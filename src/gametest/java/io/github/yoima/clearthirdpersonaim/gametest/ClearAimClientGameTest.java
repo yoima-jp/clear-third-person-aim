@@ -2,6 +2,7 @@ package io.github.yoima.clearthirdpersonaim.gametest;
 
 import io.github.yoima.clearthirdpersonaim.ClearThirdPersonAim;
 import io.github.yoima.clearthirdpersonaim.client.ClearAimClient;
+import io.github.yoima.clearthirdpersonaim.client.gui.ConfigScreen;
 import io.github.yoima.clearthirdpersonaim.core.Config;
 import io.github.yoima.clearthirdpersonaim.core.FrameParams;
 import io.github.yoima.clearthirdpersonaim.core.MaskMath;
@@ -55,6 +56,7 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             setUpScene(context, world);
             runThirdPersonChecks(context, world);
+            runConfigScreenCheck(context);
             runFirstPersonCheck(context);
         } finally {
             writeResults();
@@ -137,6 +139,9 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
             }
         }
 
+        runOverlapCheck(context, drawRef, noPlayer, silhouette, bounds);
+        runOcclusionCheck(context, world, drawRef, silhouette);
+
         // フォールバック描画の記録 (目視確認用)。シルエットのどこかが変化していることだけを確認する。
         context.runOnClient(mc -> ClearAimClient.get().config().forceFallbackRenderer = true);
         configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
@@ -213,6 +218,110 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
                 expectUnchanged(tag + " legs", legs);
             }
         }
+    }
+
+    /**
+     * 不透明度 0.5 の全身モードが「不透明なプレイヤー画像と背景を 50% で混ぜた画像」と一致することを確かめる。
+     * パーツを個別に半透明で描くと、胴体の裏の腕やスキン 2 層目の内側が透けてこの理想値からずれるので、
+     * 重なり問題の自動検出になる。足元の影は透明化エフェクト側の画像に写らないので、シルエット下部は除外する。
+     */
+    private void runOverlapCheck(ClientGameTestContext context, BufferedImage drawRef, BufferedImage noPlayer,
+                                 boolean[][] silhouette, int[] bounds) {
+        context.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.5f);
+        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        context.waitTicks(SETTLE_TICKS);
+        BufferedImage half = ScreenshotAnalysis.load(shot(context, "30_full_body_opacity_050"));
+        context.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.2f);
+        int limitY = bounds[1] + (int) ((bounds[3] - bounds[1]) * 0.85);
+        var stats = ScreenshotAnalysis.compareToBlend(half, drawRef, noPlayer, 0.5, silhouette, (x, y) -> y < limitY);
+        results.add("[overlap] opacity 0.5 vs ideal 50% blend: " + stats);
+        check(stats.pixels() >= ScreenshotAnalysis.MIN_REGION_PIXELS && stats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_BLEND,
+                "opacity 0.5 should look like the opaque player blended at 50% (no inner parts showing through): " + stats);
+    }
+
+    /**
+     * 手前のブロックに正しく隠れることを確かめる。カメラとプレイヤーの間に高さ 1 ブロックの柱を置き、
+     * 柱に隠れている部分が MOD の有無で変わらない (合成したプレイヤーが柱の上に描かれない) ことを見る。
+     * 柱を目の高さより低くしているのは、三人称カメラの衝突判定でカメラが前に押し出されないようにするため。
+     */
+    private void runOcclusionCheck(ClientGameTestContext context, TestSingleplayerContext world, BufferedImage drawRef, boolean[][] silhouette) {
+        var server = world.getServer();
+        server.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:red_concrete");
+        configure(context, false, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        context.waitTicks(SETTLE_TICKS);
+        BufferedImage occludedRef = ScreenshotAnalysis.load(shot(context, "31_occluder_reference_mod_off"));
+        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        context.waitTicks(SETTLE_TICKS);
+        BufferedImage occluded = ScreenshotAnalysis.load(shot(context, "32_occluder_full_body"));
+        server.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:air");
+        context.waitTicks(SETTLE_TICKS);
+        // 柱が写っている領域 = 柱なし/ありの参照画像の差。そのうちプレイヤーのシルエットと重なる部分を評価する。
+        boolean[][] pillar = ScreenshotAnalysis.silhouette(drawRef, occludedRef);
+        var stats = ScreenshotAnalysis.compare(occluded, occludedRef, pillar, (x, y) -> silhouette[y][x]);
+        results.add("[occlusion] pillar in front of the player: " + stats);
+        expectUnchanged("occluder in front of the player", stats);
+    }
+
+    /**
+     * 設定画面: ワールド内で開くとプレビューが発動すること、ウィジェットのクリックで値が変わり即座に描画へ反映されること、
+     * 「完了」でファイルに保存され「キャンセル」で元に戻ることを確かめる。
+     */
+    private void runConfigScreenCheck(ClientGameTestContext context) {
+        Path configFile = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve(Config.FILE_NAME);
+        configure(context, true, TransparencyMode.AIM_ELLIPSE, TransitionMode.INSTANT);
+        context.setScreen(() -> new ConfigScreen(null));
+        context.waitTicks(10);
+        shot(context, "70_config_screen_triggers");
+        boolean previewActive = context.computeOnClient(mc -> RenderHooks.frame() != null);
+        check(previewActive, "config screen preview should activate transparency without aiming");
+
+        context.clickScreenButton("config.clear_third_person_aim.page.appearance");
+        context.waitTicks(2);
+        shot(context, "71_config_screen_appearance");
+        // 「見た目」ページの先頭行 (モード) を実際にマウスでクリックする。
+        clickGui(context, 8 + 95, 44 + 10);
+        context.waitTicks(3);
+        TransparencyMode afterClick = context.computeOnClient(mc -> ClearAimClient.get().config().mode);
+        TransparencyMode rendered = context.computeOnClient(mc -> RenderHooks.frame() == null ? null : RenderHooks.frame().mode());
+        results.add("[config] mode after clicking the mode button: " + afterClick + " (rendered: " + rendered + ")");
+        check(afterClick == TransparencyMode.FULL_BODY, "clicking the mode button should cycle AIM_ELLIPSE -> FULL_BODY, got " + afterClick);
+        check(rendered == TransparencyMode.FULL_BODY, "mode change should be reflected in rendering immediately, got " + rendered);
+        shot(context, "72_config_screen_mode_changed_preview");
+
+        context.clickScreenButton("gui.done");
+        context.waitTicks(2);
+        Config saved = Config.load(configFile).config();
+        results.add("[config] saved mode after Done: " + saved.mode);
+        check(saved.mode == TransparencyMode.FULL_BODY, "Done should save the config file, saved mode = " + saved.mode);
+
+        context.setScreen(() -> new ConfigScreen(null));
+        context.waitTicks(2);
+        context.clickScreenButton("config.clear_third_person_aim.page.appearance");
+        context.waitTicks(2);
+        clickGui(context, 8 + 95, 44 + 10);
+        context.waitTicks(2);
+        context.clickScreenButton("gui.cancel");
+        context.waitTicks(2);
+        TransparencyMode afterCancel = context.computeOnClient(mc -> ClearAimClient.get().config().mode);
+        results.add("[config] mode after Cancel: " + afterCancel);
+        check(afterCancel == TransparencyMode.FULL_BODY, "Cancel should restore the previous value, got " + afterCancel);
+        boolean previewOff = context.computeOnClient(mc -> !ClearAimClient.get().isPreviewActive());
+        check(previewOff, "preview should stop when the config screen closes");
+        context.runOnClient(mc -> {
+            ClearAimClient.get().config().mode = TransparencyMode.AIM_ELLIPSE;
+            ClearAimClient.get().saveConfig();
+        });
+    }
+
+    /** GUI 座標 (GUI スケール適用前) をクリックする。 */
+    private static void clickGui(ClientGameTestContext context, int guiX, int guiY) {
+        double scale = context.computeOnClient(mc -> (double) mc.getWindow().getGuiScale());
+        context.getInput().setCursorPos((guiX + 0.5) * scale, (guiY + 0.5) * scale);
+        //? if >=26.3 {
+        context.getInput().pressMouse(1); // SDL_BUTTON_LEFT
+        //?} else {
+        /*context.getInput().pressMouse(0); // GLFW_MOUSE_BUTTON_LEFT
+        *///?}
     }
 
     private void runFirstPersonCheck(ClientGameTestContext context) {

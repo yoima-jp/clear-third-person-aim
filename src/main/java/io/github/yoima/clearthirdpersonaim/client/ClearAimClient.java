@@ -29,6 +29,8 @@ public final class ClearAimClient {
     private final ClearAimController controller;
     private final RenderMethodSelector renderer = new RenderMethodSelector();
     private final KeyMapping toggleKey;
+    /** 設定画面のプレビュー中は、構えていなくても透明化を発動させる。 */
+    private boolean previewActive;
 
     private ClearAimClient(Path configDir) {
         this.configPath = configDir.resolve(Config.FILE_NAME);
@@ -87,7 +89,15 @@ public final class ClearAimClient {
         // 一人称へ切り替えた瞬間はモデル自体が描かれなくなる。フェードの残りを持ち越して、
         // 三人称に戻した瞬間に透けた状態から始まらないようにリセットする。
         if (input != null && input.perspective() == Perspective.FIRST_PERSON) controller.resetFade();
-        controller.tick(input);
+        controller.tick(input, previewActive);
+    }
+
+    public void setPreviewActive(boolean previewActive) {
+        this.previewActive = previewActive;
+    }
+
+    public boolean isPreviewActive() {
+        return previewActive;
     }
 
     private void toggleEnabled(Minecraft minecraft) {
