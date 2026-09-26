@@ -41,6 +41,18 @@ public final class RenderMethodSelector implements AimTransparencyRenderer {
         return reason.toString();
     }
 
+    /**
+     * 設定画面に出す理由の翻訳キー。通常 (オフスクリーン合成) のときは null で、理由は表示しない。
+     * フォールバックの理由はユーザーが対処できる情報 (シェーダーパック・設定) なので表示する。
+     */
+    public String reasonTranslationKey() {
+        ClearAimClient client = ClearAimClient.get();
+        if (client != null && client.config().forceFallbackRenderer) return "config.clear_third_person_aim.reason.forced";
+        if (compositorFailure != null) return "config.clear_third_person_aim.reason.failed";
+        if (isShaderPackInUse()) return "config.clear_third_person_aim.reason.shader_pack";
+        return null;
+    }
+
     private Method decide(StringBuilder reasonOut) {
         Method method;
         String reason;

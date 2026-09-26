@@ -10,10 +10,9 @@
   "config.clear_third_person_aim.page.transition": "タイミング",
   "config.clear_third_person_aim.reset": "初期値に戻す",
   "config.clear_third_person_aim.slider": "%s: %s",
-  "config.clear_third_person_aim.status": "描画方式: %s (%s)",
+  "config.clear_third_person_aim.status": "描画方式: %s",
   "config.clear_third_person_aim.method.offscreen_composite": "オフスクリーン合成",
   "config.clear_third_person_aim.method.fallback_translucent": "簡易半透明 (フォールバック)",
-  "config.clear_third_person_aim.preview_hint": "プレビュー中: 変更はすぐに反映されます",
   "config.clear_third_person_aim.preview_unavailable": "ワールド内で開くとプレビューできます",
   "config.clear_third_person_aim.mode.full_body": "全身",
   "config.clear_third_person_aim.mode.upper_body": "上半身",
@@ -59,5 +58,9 @@
   "config.clear_third_person_aim.option.extra_using": "追加アイテム (使用中のみ)",
   "config.clear_third_person_aim.option.extra_using.tooltip": "使用中 (長押し中) に発動させる他 MOD のアイテム ID。カンマ区切り。例: somemod:longbow",
   "config.clear_third_person_aim.option.extra_holding": "追加アイテム (所持中)",
-  "config.clear_third_person_aim.option.extra_holding.tooltip": "手に持っているだけで発動させるアイテム ID。カンマ区切り。"
+  "config.clear_third_person_aim.option.extra_holding.tooltip": "手に持っているだけで発動させるアイテム ID。カンマ区切り。",
+  "config.clear_third_person_aim.method_with_reason": "%s (%s)",
+  "config.clear_third_person_aim.reason.forced": "設定で強制",
+  "config.clear_third_person_aim.reason.failed": "合成を利用できません",
+  "config.clear_third_person_aim.reason.shader_pack": "シェーダーパック使用中"
 }

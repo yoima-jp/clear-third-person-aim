@@ -10,10 +10,9 @@
   "config.clear_third_person_aim.page.transition": "Timing",
   "config.clear_third_person_aim.reset": "Reset",
   "config.clear_third_person_aim.slider": "%s: %s",
-  "config.clear_third_person_aim.status": "Renderer: %s (%s)",
+  "config.clear_third_person_aim.status": "Renderer: %s",
   "config.clear_third_person_aim.method.offscreen_composite": "Offscreen compositing",
   "config.clear_third_person_aim.method.fallback_translucent": "Simple translucency (fallback)",
-  "config.clear_third_person_aim.preview_hint": "Live preview: your changes apply immediately.",
   "config.clear_third_person_aim.preview_unavailable": "Open this screen in a world to see a live preview.",
   "config.clear_third_person_aim.mode.full_body": "Full body",
   "config.clear_third_person_aim.mode.upper_body": "Upper body",
@@ -59,5 +58,9 @@
   "config.clear_third_person_aim.option.extra_using": "Extra items (while using)",
   "config.clear_third_person_aim.option.extra_using.tooltip": "Item IDs from other mods that trigger while being used, separated by commas. Example: somemod:longbow",
   "config.clear_third_person_aim.option.extra_holding": "Extra items (while held)",
-  "config.clear_third_person_aim.option.extra_holding.tooltip": "Item IDs that trigger just by holding them, separated by commas."
+  "config.clear_third_person_aim.option.extra_holding.tooltip": "Item IDs that trigger just by holding them, separated by commas.",
+  "config.clear_third_person_aim.method_with_reason": "%s (%s)",
+  "config.clear_third_person_aim.reason.forced": "forced in settings",
+  "config.clear_third_person_aim.reason.failed": "compositing unavailable",
+  "config.clear_third_person_aim.reason.shader_pack": "shader pack active"
 }

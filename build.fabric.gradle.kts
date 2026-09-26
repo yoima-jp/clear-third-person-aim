@@ -42,6 +42,8 @@ dependencies {
 
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
+    // 配布用 jar の起動確認 (runProductionSmoke) で一緒に読み込む MOD。
+    "productionRuntimeMods"("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
 
     // Mod Menu は任意依存。compileOnly 相当で参照し、実行時に無ければ連携クラスは読み込まれない。
     sc.properties.getOrNull<String>("deps.modmenu")?.let {
@@ -168,6 +170,13 @@ tasks {
             mustRunAfter("deleteGameTestRunDir")
         }
         named("runClientGameTest") { dependsOn(prepare) }
+    }
+
+    // 配布用 jar (1.21.x は intermediary へ remap 済み) を本番と同じ形で起動し、メニュー画面まで到達するか確かめる。
+    register<net.fabricmc.loom.task.prod.ClientProductionRunTask>("runProductionSmoke") {
+        group = "verification"
+        jvmArgs.add("-Dcta.smoke=true")
+        runDir = layout.buildDirectory.dir("run/productionSmoke")
     }
 
     if (!hasClientGameTest) {

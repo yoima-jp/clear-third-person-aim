@@ -1,7 +1,6 @@
 package io.github.yoima.clearthirdpersonaim.client.gui;
 
 import io.github.yoima.clearthirdpersonaim.client.ClearAimClient;
-import io.github.yoima.clearthirdpersonaim.core.AimTransparencyRenderer;
 import io.github.yoima.clearthirdpersonaim.core.Config;
 import io.github.yoima.clearthirdpersonaim.core.FrameParams;
 import io.github.yoima.clearthirdpersonaim.core.TransitionMode;
@@ -287,10 +286,12 @@ public final class ConfigScreen extends Screen {
     }
 
     private Component statusLine() {
-        AimTransparencyRenderer renderer = ClearAimClient.get().renderer();
-        String method = renderer.currentMethod().name().toLowerCase(Locale.ROOT);
-        return Component.translatable("config.clear_third_person_aim.status",
-                Component.translatable("config.clear_third_person_aim.method." + method), renderer.methodReason());
+        var selector = ClearAimClient.get().rendererSelector();
+        String method = selector.currentMethod().name().toLowerCase(Locale.ROOT);
+        Component name = Component.translatable("config.clear_third_person_aim.method." + method);
+        String reason = selector.reasonTranslationKey();
+        if (reason != null) name = Component.translatable("config.clear_third_person_aim.method_with_reason", name, Component.translatable(reason));
+        return Component.translatable("config.clear_third_person_aim.status", name);
     }
 
     private int statusX() {
@@ -305,9 +306,11 @@ public final class ConfigScreen extends Screen {
         int maxWidth = Math.max(60, width - statusX() - 6);
         List<StatusLine> lines = new java.util.ArrayList<>();
         for (var part : font.split(statusLine(), maxWidth)) lines.add(new StatusLine(part, TEXT_COLOR));
-        Component hint = Component.translatable(inWorld()
-                ? "config.clear_third_person_aim.preview_hint" : "config.clear_third_person_aim.preview_unavailable");
-        for (var part : font.split(hint, maxWidth)) lines.add(new StatusLine(part, SUBTLE_TEXT_COLOR));
+        // プレビューが使えないとき (タイトル画面から開いたとき) だけ、その旨を出す。
+        if (!inWorld()) {
+            Component hint = Component.translatable("config.clear_third_person_aim.preview_unavailable");
+            for (var part : font.split(hint, maxWidth)) lines.add(new StatusLine(part, SUBTLE_TEXT_COLOR));
+        }
         return lines;
     }
 
