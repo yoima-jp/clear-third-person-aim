@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Makes your own player model transparent only where it blocks your aim in third person view.",
+  "authors": ["yoima-jp"],
+  "license": "MIT",
+  "icon": "assets/clear_third_person_aim/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["io.github.yoima.clearthirdpersonaim.fabric.ClearThirdPersonAimFabric"],
+    "modmenu": ["io.github.yoima.clearthirdpersonaim.fabric.ModMenuIntegration"]
+  },
+  "mixins": ["clear_third_person_aim.mixins.json"],
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft}"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
