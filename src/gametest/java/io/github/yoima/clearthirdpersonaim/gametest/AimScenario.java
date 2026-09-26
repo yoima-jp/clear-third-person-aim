@@ -9,10 +9,6 @@ import io.github.yoima.clearthirdpersonaim.core.MaskMath;
 import io.github.yoima.clearthirdpersonaim.core.TransitionMode;
 import io.github.yoima.clearthirdpersonaim.core.TransparencyMode;
 import io.github.yoima.clearthirdpersonaim.render.RenderHooks;
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.CameraType;
 
 import java.awt.image.BufferedImage;
@@ -26,65 +22,96 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 実際のクライアントを起動して、透明化の見た目をピクセル単位で検証する。
+ * 実際のクライアントで透明化の見た目をピクセル単位で検証するシナリオ。ローダーやテストの駆動方法には依存しない。
  *
  * <p>シーン: スーパーフラットで、プレイヤーの 12 ブロック前に白コンクリートの壁を立て、背面三人称で壁の方を向く。
  * 背景が一様なので、プレイヤーのシルエットと透明化による色の変化を安定して取り出せる。
  *
  * <p>比較の基準は「MOD を無効にした同じ姿勢のスクリーンショット」。プレイヤーの有無は透明化エフェクト
  * (パーティクル非表示) で切り替えてシルエットを得る。スクリーンショットと数値の結果は
- * {@code build/test-screenshots/<version>-fabric/} に保存し、TEST_REPORT.md から参照する。
+ * {@code build/test-screenshots/<version>-<loader>[-compat]/} に保存し、TEST_REPORT.md から参照する。
+ * しきい値の根拠は DECISIONS.md D-008。
  */
-public final class ClearAimClientGameTest implements FabricClientGameTest {
+public final class AimScenario {
     private static final int DRAW_TICKS = 30;
     private static final int SETTLE_TICKS = 3;
 
+    private final ClientTestDriver driver;
+    private final Path outputDir;
+    private final Path configDir;
     private final List<String> results = new ArrayList<>();
     private final List<String> failures = new ArrayList<>();
-    private Path outputDir;
     /**
-     * 互換性検証の構成 (build.fabric.gradle.kts の -Pcta.compat)。"iris-shader" ではシェーダーパック使用中なので
-     * フォールバック描画に切り替わることを期待し、モードごとの厳密な見た目の検証は行わない (フォールバックは全体一律の半透明)。
+     * 互換性検証の構成 (-Pcta.compat)。"iris-shader" ではシェーダーパック使用中なのでフォールバック描画に
+     * 切り替わることを期待し、モードごとの厳密な見た目の検証は行わない (フォールバックは全体一律の半透明)。
      */
     private final String compat = System.getProperty("cta.compat", "none");
     private final boolean expectFallback = compat.equals("iris-shader");
 
-    @Override
-    public void runTest(ClientGameTestContext context) {
-        outputDir = Path.of(System.getProperty("cta.screenshotDir", "screenshots-clear-third-person-aim"));
+    public AimScenario(ClientTestDriver driver, String loader, Path configDir) {
+        this.driver = driver;
+        this.configDir = configDir;
+        this.outputDir = Path.of(System.getProperty("cta.screenshotDir", "screenshots-clear-third-person-aim"));
         try {
             Files.createDirectories(outputDir);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        results.add("Clear Third Person Aim client gametest (MC " + ClearThirdPersonAim.MINECRAFT + ", Fabric, compat=" + compat + ")");
+        results.add("Clear Third Person Aim client test (MC " + ClearThirdPersonAim.MINECRAFT + ", " + loader + ", compat=" + compat + ")");
+    }
 
-        try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            setUpScene(context, world);
-            runThirdPersonChecks(context, world);
-            runConfigScreenCheck(context);
-            runModMenuCheck(context);
-            runFirstPersonCheck(context);
-        } finally {
-            writeResults();
-        }
-        if (!failures.isEmpty()) {
-            throw new AssertionError("Clear Third Person Aim pixel checks failed:\n - " + String.join("\n - ", failures));
+    public List<String> results() {
+        return results;
+    }
+
+    public List<String> failures() {
+        return failures;
+    }
+
+    /** ワールドに入った状態で呼ぶ。 */
+    public void run() {
+        setUpScene();
+        runThirdPersonChecks();
+        runConfigScreenCheck();
+        runKeyBindingCheck();
+        runFirstPersonCheck();
+    }
+
+    public void check(boolean condition, String message) {
+        if (!condition) {
+            failures.add(message);
+            results.add("FAIL: " + message);
         }
     }
 
-    private void setUpScene(ClientGameTestContext context, TestSingleplayerContext world) {
-        var server = world.getServer();
-        server.runCommand("gamemode creative @a");
-        server.runCommand("time set noon");
-        server.runCommand("weather clear");
-        server.runCommand("fill -12 -61 12 12 -45 12 minecraft:white_concrete");
-        server.runCommand("fill -12 -61 -20 12 -61 11 minecraft:white_concrete");
-        server.runCommand("tp @a 0.5 -60 0.5 0 0");
-        server.runCommand("clear @a");
-        server.runCommand("give @a minecraft:bow");
-        world.getConnection().waitForChunksRender();
-        context.runOnClient(mc -> {
+    public void writeResults() {
+        results.add(failures.isEmpty() ? "RESULT: PASS" : "RESULT: FAIL (" + failures.size() + ")");
+        try {
+            Files.write(outputDir.resolve("results.txt"), results, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            ClearThirdPersonAim.LOGGER.error("Could not write test results", e);
+        }
+        results.forEach(line -> ClearThirdPersonAim.LOGGER.info("[client-test] {}", line));
+    }
+
+    private void setUpScene() {
+        driver.runCommand("gamemode creative @a");
+        driver.runCommand("time set noon");
+        driver.runCommand("weather clear");
+        // 時間・天候の進行を止める。ゲームルール名はバージョンで違うので両方送る (存在しない方はエラーになるだけ)。
+        driver.runCommand("gamerule doDaylightCycle false");
+        driver.runCommand("gamerule doWeatherCycle false");
+        driver.runCommand("gamerule advance_time false");
+        driver.runCommand("gamerule advance_weather false");
+        driver.runCommand("gamerule doMobSpawning false");
+        driver.runCommand("gamerule spawn_mobs false");
+        driver.runCommand("fill -12 -61 12 12 -45 12 minecraft:white_concrete");
+        driver.runCommand("fill -12 -61 -20 12 -61 11 minecraft:white_concrete");
+        driver.runCommand("tp @a 0.5 -60 0.5 0 0");
+        driver.runCommand("clear @a");
+        driver.runCommand("give @a minecraft:bow");
+        driver.waitTicks(40);
+        driver.runOnClient(mc -> {
             // HUD (クロスヘア・ホットバー) を隠し、ピクセル比較にプレイヤーと背景だけが写るようにする。
             //? if >=26.3 {
             if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
@@ -92,7 +119,11 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
             /*mc.options.hideGui = true;
             *///?}
             mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            //? if >=1.21.5 {
             mc.player.getInventory().setSelectedSlot(0);
+            //?} else {
+            /*mc.player.getInventory().selected = 0;
+            *///?}
             Config config = ClearAimClient.get().config();
             config.enabled = false;
             // 足元付近を「楕円の外」として検証できるよう、テストでは楕円を小さめにする (既定 0.16 / 0.26)。
@@ -102,16 +133,17 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
             config.remainingOpacity = 0.2f;
             config.forceFallbackRenderer = false;
             config.hideHeldItems = false;
+            config.distanceCompensation = true;
         });
-        context.waitTicks(20);
+        driver.waitTicks(20);
     }
 
-    private Path shot(ClientGameTestContext context, String name) {
-        return context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withDestinationDir(outputDir));
+    private BufferedImage shot(String name) {
+        return ScreenshotAnalysis.load(driver.screenshot(name, outputDir));
     }
 
-    private void configure(ClientGameTestContext context, boolean enabled, TransparencyMode mode, TransitionMode transition) {
-        context.runOnClient(mc -> {
+    private void configure(boolean enabled, TransparencyMode mode, TransitionMode transition) {
+        driver.runOnClient(mc -> {
             Config config = ClearAimClient.get().config();
             config.enabled = enabled;
             config.mode = mode;
@@ -121,52 +153,52 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         });
     }
 
-    private void runThirdPersonChecks(ClientGameTestContext context, TestSingleplayerContext world) {
-        var server = world.getServer();
-        BufferedImage idleRef = ScreenshotAnalysis.load(shot(context, "00_idle_reference"));
+    private void runThirdPersonChecks() {
+        BufferedImage idleRef = shot("00_idle_reference");
 
-        context.getInput().holdKey(options -> options.keyUse);
-        context.waitTicks(DRAW_TICKS);
-        BufferedImage drawRef = ScreenshotAnalysis.load(shot(context, "01_drawing_reference_mod_off"));
+        driver.holdUse(true);
+        driver.waitTicks(DRAW_TICKS);
+        BufferedImage drawRef = shot("01_drawing_reference_mod_off");
 
-        server.runCommand("effect give @a minecraft:invisibility infinite 0 true");
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage noPlayer = ScreenshotAnalysis.load(shot(context, "02_drawing_invisible_effect"));
-        server.runCommand("effect clear @a");
-        context.waitTicks(SETTLE_TICKS);
+        driver.runCommand("effect give @a minecraft:invisibility infinite 0 true");
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage noPlayer = shot("02_drawing_invisible_effect");
+        driver.runCommand("effect clear @a");
+        driver.waitTicks(SETTLE_TICKS);
 
         boolean[][] silhouette = ScreenshotAnalysis.silhouette(drawRef, noPlayer);
         int[] bounds = ScreenshotAnalysis.bounds(silhouette);
         results.add("silhouette bounds (x0,y0,x1,y1) = " + bounds[0] + "," + bounds[1] + "," + bounds[2] + "," + bounds[3]);
         check(bounds[2] > bounds[0] && bounds[3] > bounds[1], "player silhouette was not found (is the player on screen?)");
+        if (bounds[2] <= bounds[0]) return;
 
         for (TransitionMode transition : TransitionMode.values()) {
             for (TransparencyMode mode : TransparencyMode.values()) {
-                runModeCheck(context, transition, mode, drawRef, silhouette, bounds);
+                runModeCheck(transition, mode, drawRef, silhouette, bounds);
             }
         }
 
-        runOverlapCheck(context, drawRef, noPlayer, silhouette, bounds);
-        runOcclusionCheck(context, world, drawRef, silhouette);
+        runOverlapCheck(drawRef, noPlayer, silhouette, bounds);
+        runOcclusionCheck(drawRef, silhouette);
 
         // フォールバック描画の記録 (目視確認用)。シルエットのどこかが変化していることだけを確認する。
-        context.runOnClient(mc -> ClearAimClient.get().config().forceFallbackRenderer = true);
-        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage fallback = ScreenshotAnalysis.load(shot(context, "40_fallback_full_body"));
+        driver.runOnClient(mc -> ClearAimClient.get().config().forceFallbackRenderer = true);
+        configure(true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage fallback = shot("40_fallback_full_body");
         var fallbackStats = ScreenshotAnalysis.compare(fallback, drawRef, silhouette, null);
         results.add("fallback FULL_BODY silhouette: " + fallbackStats);
         check(fallbackStats.changedFraction() >= 0.3, "fallback renderer did not change the player body: " + fallbackStats);
-        context.runOnClient(mc -> ClearAimClient.get().config().forceFallbackRenderer = false);
+        driver.runOnClient(mc -> ClearAimClient.get().config().forceFallbackRenderer = false);
 
         // 使用解除: フェードアウト時間経過後、MOD 無効の待機姿勢とほぼ一致すること。
-        configure(context, true, TransparencyMode.AIM_ELLIPSE, TransitionMode.FADE);
-        context.waitTicks(SETTLE_TICKS);
-        context.getInput().releaseKey(options -> options.keyUse);
-        context.waitTicks(250 / 50 + 10);
-        server.runCommand("kill @e[type=minecraft:arrow]");
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage released = ScreenshotAnalysis.load(shot(context, "50_after_release"));
+        configure(true, TransparencyMode.AIM_ELLIPSE, TransitionMode.FADE);
+        driver.waitTicks(SETTLE_TICKS);
+        driver.holdUse(false);
+        driver.waitTicks(250 / 50 + 10);
+        driver.runCommand("kill @e[type=minecraft:arrow]");
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage released = shot("50_after_release");
         var releaseStats = ScreenshotAnalysis.compare(released, idleRef, null, null);
         results.add("after release vs idle reference (whole screen): " + releaseStats);
         check(releaseStats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_IDENTICAL
@@ -174,23 +206,22 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
                 "after release the screen should match the idle reference: " + releaseStats);
     }
 
-    private void runModeCheck(ClientGameTestContext context, TransitionMode transition, TransparencyMode mode,
-                              BufferedImage drawRef, boolean[][] silhouette, int[] bounds) {
+    private void runModeCheck(TransitionMode transition, TransparencyMode mode, BufferedImage drawRef, boolean[][] silhouette, int[] bounds) {
         String tag = mode.name().toLowerCase(Locale.ROOT) + "_" + transition.name().toLowerCase(Locale.ROOT);
         // 前のモードの透明化が完全に戻るのを待ってから切り替える。
-        configure(context, false, mode, transition);
-        context.waitTicks(250 / 50 + SETTLE_TICKS);
-        configure(context, true, mode, transition);
+        configure(false, mode, transition);
+        driver.waitTicks(250 / 50 + SETTLE_TICKS);
+        configure(true, mode, transition);
         if (transition == TransitionMode.FADE) {
-            context.waitTicks(2);
-            shot(context, "1x_" + tag + "_mid_fade");
-            context.waitTicks(150 / 50 + SETTLE_TICKS);
+            driver.waitTicks(2);
+            shot("1x_" + tag + "_mid_fade");
+            driver.waitTicks(150 / 50 + SETTLE_TICKS);
         } else {
-            context.waitTicks(2);
+            driver.waitTicks(2);
         }
-        BufferedImage active = ScreenshotAnalysis.load(shot(context, "2x_" + tag + "_active"));
-        FrameParams params = context.computeOnClient(mc -> RenderHooks.frame());
-        String method = context.computeOnClient(mc -> ClearAimClient.get().renderer().currentMethod().name());
+        BufferedImage active = shot("2x_" + tag + "_active");
+        FrameParams params = driver.computeOnClient(mc -> RenderHooks.frame());
+        String method = driver.computeOnClient(mc -> ClearAimClient.get().renderer().currentMethod().name());
         results.add("[" + tag + "] renderer=" + method + " params=" + params);
         check(params != null, tag + ": transparency did not activate while drawing the bow");
         if (params == null) return;
@@ -239,13 +270,12 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
      * パーツを個別に半透明で描くと、胴体の裏の腕やスキン 2 層目の内側が透けてこの理想値からずれるので、
      * 重なり問題の自動検出になる。足元の影は透明化エフェクト側の画像に写らないので、シルエット下部は除外する。
      */
-    private void runOverlapCheck(ClientGameTestContext context, BufferedImage drawRef, BufferedImage noPlayer,
-                                 boolean[][] silhouette, int[] bounds) {
-        context.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.5f);
-        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage half = ScreenshotAnalysis.load(shot(context, "30_full_body_opacity_050"));
-        context.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.2f);
+    private void runOverlapCheck(BufferedImage drawRef, BufferedImage noPlayer, boolean[][] silhouette, int[] bounds) {
+        driver.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.5f);
+        configure(true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage half = shot("30_full_body_opacity_050");
+        driver.runOnClient(mc -> ClearAimClient.get().config().remainingOpacity = 0.2f);
         int limitY = bounds[1] + (int) ((bounds[3] - bounds[1]) * 0.85);
         var stats = ScreenshotAnalysis.compareToBlend(half, drawRef, noPlayer, 0.5, silhouette, (x, y) -> y < limitY);
         results.add("[overlap] opacity 0.5 vs ideal 50% blend: " + stats);
@@ -259,17 +289,16 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
      * 柱に隠れている部分が MOD の有無で変わらない (合成したプレイヤーが柱の上に描かれない) ことを見る。
      * 柱を目の高さより低くしているのは、三人称カメラの衝突判定でカメラが前に押し出されないようにするため。
      */
-    private void runOcclusionCheck(ClientGameTestContext context, TestSingleplayerContext world, BufferedImage drawRef, boolean[][] silhouette) {
-        var server = world.getServer();
-        server.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:red_concrete");
-        configure(context, false, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage occludedRef = ScreenshotAnalysis.load(shot(context, "31_occluder_reference_mod_off"));
-        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage occluded = ScreenshotAnalysis.load(shot(context, "32_occluder_full_body"));
-        server.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:air");
-        context.waitTicks(SETTLE_TICKS);
+    private void runOcclusionCheck(BufferedImage drawRef, boolean[][] silhouette) {
+        driver.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:red_concrete");
+        configure(false, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.waitTicks(SETTLE_TICKS + 5);
+        BufferedImage occludedRef = shot("31_occluder_reference_mod_off");
+        configure(true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage occluded = shot("32_occluder_full_body");
+        driver.runCommand("fill -1 -60 -1 1 -60 -1 minecraft:air");
+        driver.waitTicks(SETTLE_TICKS + 5);
         // 柱が写っている領域 = 柱なし/ありの参照画像の差。そのうちプレイヤーのシルエットと重なる部分を評価する。
         boolean[][] pillar = ScreenshotAnalysis.silhouette(drawRef, occludedRef);
         var stats = ScreenshotAnalysis.compare(occluded, occludedRef, pillar, (x, y) -> silhouette[y][x]);
@@ -281,110 +310,96 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
      * 設定画面: ワールド内で開くとプレビューが発動すること、ウィジェットのクリックで値が変わり即座に描画へ反映されること、
      * 「完了」でファイルに保存され「キャンセル」で元に戻ることを確かめる。
      */
-    private void runConfigScreenCheck(ClientGameTestContext context) {
-        Path configFile = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve(Config.FILE_NAME);
-        configure(context, true, TransparencyMode.AIM_ELLIPSE, TransitionMode.INSTANT);
-        context.setScreen(() -> new ConfigScreen(null));
-        context.waitTicks(10);
-        shot(context, "70_config_screen_triggers");
-        boolean previewActive = context.computeOnClient(mc -> RenderHooks.frame() != null);
+    private void runConfigScreenCheck() {
+        Path configFile = configDir.resolve(Config.FILE_NAME);
+        configure(true, TransparencyMode.AIM_ELLIPSE, TransitionMode.INSTANT);
+        driver.setScreen(() -> new ConfigScreen(null));
+        driver.waitTicks(10);
+        shot("70_config_screen_triggers");
+        boolean previewActive = driver.computeOnClient(mc -> RenderHooks.frame() != null);
         check(previewActive, "config screen preview should activate transparency without aiming");
 
-        context.clickScreenButton("config.clear_third_person_aim.page.appearance");
-        context.waitTicks(2);
-        shot(context, "71_config_screen_appearance");
-        // 「見た目」ページの先頭行 (モード) を実際にマウスでクリックする。
-        clickGui(context, 8 + 95, 44 + 10);
-        context.waitTicks(3);
-        TransparencyMode afterClick = context.computeOnClient(mc -> ClearAimClient.get().config().mode);
-        TransparencyMode rendered = context.computeOnClient(mc -> RenderHooks.frame() == null ? null : RenderHooks.frame().mode());
+        driver.clickButton("config.clear_third_person_aim.page.appearance");
+        driver.waitTicks(2);
+        shot("71_config_screen_appearance");
+        // 「見た目」ページの先頭行 (モード) を実際にクリックする。
+        driver.clickGui(8 + 95, 44 + 10);
+        driver.waitTicks(3);
+        TransparencyMode afterClick = driver.computeOnClient(mc -> ClearAimClient.get().config().mode);
+        TransparencyMode rendered = driver.computeOnClient(mc -> RenderHooks.frame() == null ? null : RenderHooks.frame().mode());
         results.add("[config] mode after clicking the mode button: " + afterClick + " (rendered: " + rendered + ")");
         check(afterClick == TransparencyMode.FULL_BODY, "clicking the mode button should cycle AIM_ELLIPSE -> FULL_BODY, got " + afterClick);
         check(rendered == TransparencyMode.FULL_BODY, "mode change should be reflected in rendering immediately, got " + rendered);
-        shot(context, "72_config_screen_mode_changed_preview");
+        shot("72_config_screen_mode_changed_preview");
 
-        context.clickScreenButton("gui.done");
-        context.waitTicks(2);
+        driver.clickButton("gui.done");
+        driver.waitTicks(2);
         Config saved = Config.load(configFile).config();
         results.add("[config] saved mode after Done: " + saved.mode);
         check(saved.mode == TransparencyMode.FULL_BODY, "Done should save the config file, saved mode = " + saved.mode);
 
-        context.setScreen(() -> new ConfigScreen(null));
-        context.waitTicks(2);
-        context.clickScreenButton("config.clear_third_person_aim.page.appearance");
-        context.waitTicks(2);
-        clickGui(context, 8 + 95, 44 + 10);
-        context.waitTicks(2);
-        context.clickScreenButton("gui.cancel");
-        context.waitTicks(2);
-        TransparencyMode afterCancel = context.computeOnClient(mc -> ClearAimClient.get().config().mode);
+        driver.setScreen(() -> new ConfigScreen(null));
+        driver.waitTicks(2);
+        driver.clickButton("config.clear_third_person_aim.page.appearance");
+        driver.waitTicks(2);
+        driver.clickGui(8 + 95, 44 + 10);
+        driver.waitTicks(2);
+        driver.clickButton("gui.cancel");
+        driver.waitTicks(2);
+        TransparencyMode afterCancel = driver.computeOnClient(mc -> ClearAimClient.get().config().mode);
         results.add("[config] mode after Cancel: " + afterCancel);
         check(afterCancel == TransparencyMode.FULL_BODY, "Cancel should restore the previous value, got " + afterCancel);
-        boolean previewOff = context.computeOnClient(mc -> !ClearAimClient.get().isPreviewActive());
+        boolean previewOff = driver.computeOnClient(mc -> !ClearAimClient.get().isPreviewActive());
         check(previewOff, "preview should stop when the config screen closes");
-        context.runOnClient(mc -> {
+        driver.runOnClient(mc -> {
             ClearAimClient.get().config().mode = TransparencyMode.AIM_ELLIPSE;
             ClearAimClient.get().saveConfig();
         });
     }
 
     /**
-     * Mod Menu が入っている構成 (-Pcta.withModMenu) だけ、Mod Menu の設定ボタンが作る画面が本 MOD の設定画面であることを確かめる。
-     * Mod Menu はゲームテストのコンパイル時依存にしないので、エントリポイントをリフレクションで呼ぶ。
+     * 切り替えキー: F7 に割り当ててから押すと全体スイッチが反転し、ファイルにも保存されること。
+     * 実際のキー入力の代わりに、バニラの入力処理が呼ぶ KeyMapping.click を使う (キーコードは InputConstants の定数で、
+     * 26.3 以降の SDL / それ以前の GLFW の違いを吸収する)。最後に未割り当てへ戻す。
      */
-    private void runModMenuCheck(ClientGameTestContext context) {
-        var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
-        if (!loader.isModLoaded("modmenu")) {
-            results.add("[modmenu] not installed; integration check skipped (the mod loaded without it)");
-            return;
-        }
-        String screenClass;
-        try {
-            screenClass = context.<String, ReflectiveOperationException>computeOnClient(mc -> {
-            for (var container : loader.getEntrypointContainers("modmenu", Object.class)) {
-                if (!container.getProvider().getMetadata().getId().equals(ClearThirdPersonAim.MOD_ID)) continue;
-                Object api = container.getEntrypoint();
-                Object factory = api.getClass().getMethod("getModConfigScreenFactory").invoke(api);
-                java.lang.reflect.Method create = factory.getClass().getMethod("create", net.minecraft.client.gui.screens.Screen.class);
-                create.setAccessible(true);
-                return create.invoke(factory, (Object) null).getClass().getName();
-            }
-            return "none";
-            });
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError("Could not call the Mod Menu entrypoint", e);
-        }
-        results.add("[modmenu] config screen factory creates: " + screenClass);
-        check(ConfigScreen.class.getName().equals(screenClass), "Mod Menu should open ConfigScreen, got " + screenClass);
+    private void runKeyBindingCheck() {
+        boolean before = driver.computeOnClient(mc -> ClearAimClient.get().config().enabled);
+        driver.runOnClient(mc -> {
+            var key = com.mojang.blaze3d.platform.InputConstants.Type.KEYBOARD.getOrCreate(com.mojang.blaze3d.platform.InputConstants.KEY_F7);
+            ClearAimClient.get().toggleKey().setKey(key);
+            net.minecraft.client.KeyMapping.resetMapping();
+            net.minecraft.client.KeyMapping.click(key);
+        });
+        driver.waitTicks(2);
+        boolean after = driver.computeOnClient(mc -> ClearAimClient.get().config().enabled);
+        Config saved = Config.load(configDir.resolve(Config.FILE_NAME)).config();
+        results.add("[keybinding] enabled " + before + " -> " + after + " (saved: " + saved.enabled + ")");
+        check(after == !before, "the toggle key should flip the master switch");
+        check(saved.enabled == after, "the toggled state should be saved");
+        driver.runOnClient(mc -> {
+            ClearAimClient.get().toggleKey().setKey(com.mojang.blaze3d.platform.InputConstants.UNKNOWN);
+            net.minecraft.client.KeyMapping.resetMapping();
+            ClearAimClient.get().config().enabled = true;
+            ClearAimClient.get().saveConfig();
+        });
     }
 
-    /** GUI 座標 (GUI スケール適用前) をクリックする。 */
-    private static void clickGui(ClientGameTestContext context, int guiX, int guiY) {
-        double scale = context.computeOnClient(mc -> (double) mc.getWindow().getGuiScale());
-        context.getInput().setCursorPos((guiX + 0.5) * scale, (guiY + 0.5) * scale);
-        //? if >=26.3 {
-        context.getInput().pressMouse(1); // SDL_BUTTON_LEFT
-        //?} else {
-        /*context.getInput().pressMouse(0); // GLFW_MOUSE_BUTTON_LEFT
-        *///?}
-    }
-
-    private void runFirstPersonCheck(ClientGameTestContext context) {
-        context.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
-        configure(context, false, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.getInput().holdKey(options -> options.keyUse);
-        context.waitTicks(DRAW_TICKS);
-        BufferedImage off = ScreenshotAnalysis.load(shot(context, "60_first_person_mod_off"));
-        configure(context, true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
-        context.waitTicks(SETTLE_TICKS);
-        BufferedImage on = ScreenshotAnalysis.load(shot(context, "61_first_person_mod_on"));
-        context.getInput().releaseKey(options -> options.keyUse);
+    private void runFirstPersonCheck() {
+        driver.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+        configure(false, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.holdUse(true);
+        driver.waitTicks(DRAW_TICKS);
+        BufferedImage off = shot("60_first_person_mod_off");
+        configure(true, TransparencyMode.FULL_BODY, TransitionMode.INSTANT);
+        driver.waitTicks(SETTLE_TICKS);
+        BufferedImage on = shot("61_first_person_mod_on");
+        driver.holdUse(false);
         var stats = ScreenshotAnalysis.compare(on, off, null, null);
         results.add("first person mod on vs off (whole screen): " + stats);
         check(stats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_IDENTICAL
                         && stats.changedFraction() <= ScreenshotAnalysis.MAX_CHANGED_FRACTION_IDENTICAL,
                 "first person rendering must not change: " + stats);
-        boolean activeInFirstPerson = context.computeOnClient(mc -> RenderHooks.frame() != null);
+        boolean activeInFirstPerson = driver.computeOnClient(mc -> RenderHooks.frame() != null);
         check(!activeInFirstPerson, "transparency must not activate in first person");
     }
 
@@ -399,22 +414,5 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         check(stats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_UNCHANGED
                         && stats.changedFraction() <= ScreenshotAnalysis.MAX_CHANGED_FRACTION_UNCHANGED,
                 what + ": expected no visible change (" + stats + ")");
-    }
-
-    private void check(boolean condition, String message) {
-        if (!condition) {
-            failures.add(message);
-            results.add("FAIL: " + message);
-        }
-    }
-
-    private void writeResults() {
-        results.add(failures.isEmpty() ? "RESULT: PASS" : "RESULT: FAIL (" + failures.size() + ")");
-        try {
-            Files.write(outputDir.resolve("results.txt"), results, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            ClearThirdPersonAim.LOGGER.error("Could not write gametest results", e);
-        }
-        results.forEach(line -> ClearThirdPersonAim.LOGGER.info("[gametest] {}", line));
     }
 }

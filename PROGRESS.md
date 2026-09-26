@@ -48,8 +48,8 @@
 - [x] TEST_REPORT.md に記録
 
 ## Phase 9: NeoForge 26.3
-- [ ] ビルド
-- [ ] 起動・機能
+- [x] ビルド
+- [x] 起動・機能 (自作クライアントテスト runSelfTest で Phase 2〜7 と同じシナリオが PASS、Sodium 併用も PASS)
 
 ## Phase 10: 旧バージョン対応
 - [ ] 26.2 (Fabric / NeoForge)

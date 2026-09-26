@@ -5,7 +5,7 @@
   "name": "Clear Third Person Aim client gametest",
   "environment": "client",
   "entrypoints": {
-    "fabric-client-gametest": ["io.github.yoima.clearthirdpersonaim.gametest.ClearAimClientGameTest"]
+    "fabric-client-gametest": ["io.github.yoima.clearthirdpersonaim.gametest.fabric.FabricAimGameTest"]
   },
   "depends": {
     "clear_third_person_aim": "*"

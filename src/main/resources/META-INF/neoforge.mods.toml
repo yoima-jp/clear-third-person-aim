@@ -9,7 +9,7 @@ displayName = "${name}"
 version = "${version}"
 authors = "yoima-jp"
 description = "Makes your own player model transparent only where it blocks your aim in third person view."
-logoFile = "assets/clear_third_person_aim/icon.png"
+${icon_key} = "assets/clear_third_person_aim/icon.png"
 
 [[mixins]]
 config = "clear_third_person_aim.mixins.json"

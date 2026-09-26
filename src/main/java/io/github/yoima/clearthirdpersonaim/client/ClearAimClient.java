@@ -31,6 +31,8 @@ public final class ClearAimClient {
     private final KeyMapping toggleKey;
     /** 設定画面のプレビュー中は、構えていなくても透明化を発動させる。 */
     private boolean previewActive;
+    /** クライアント tick の通算回数。自作テストドライバが「n tick 待つ」ために読む (描画スレッド以外からも読むので volatile)。 */
+    private volatile long clientTicks;
 
     private ClearAimClient(Path configDir) {
         this.configPath = configDir.resolve(Config.FILE_NAME);
@@ -71,12 +73,21 @@ public final class ClearAimClient {
         return toggleKey;
     }
 
+    //? if >=1.21.9 {
+    // Fabric はバニラの登録処理をそのまま使い、NeoForge は RegisterKeyMappingsEvent#registerCategory で登録する
+    // (NeoForge ではバニラの Category.register を使うと並び順の管理が二重になる)。
+    //? if fabric {
+    public static final KeyMapping.Category KEY_CATEGORY = KeyMapping.Category.register(ClearThirdPersonAim.id("keys"));
+    //?} else {
+    /*public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(ClearThirdPersonAim.id("keys"));
+    *///?}
+    //?}
+
     // 既定では未割り当て。ユーザーが操作設定で割り当てる。
     private static KeyMapping createToggleKey() {
         int unbound = InputConstants.UNKNOWN.getValue();
         //? if >=1.21.9 {
-        KeyMapping.Category category = KeyMapping.Category.register(ClearThirdPersonAim.id("keys"));
-        return new KeyMapping("key.clear_third_person_aim.toggle", unbound, category);
+        return new KeyMapping("key.clear_third_person_aim.toggle", unbound, KEY_CATEGORY);
         //?} else {
         /*return new KeyMapping("key.clear_third_person_aim.toggle", unbound, "key.categories.clear_third_person_aim");
         *///?}
@@ -84,12 +95,17 @@ public final class ClearAimClient {
 
     /** クライアント tick の終わりに呼ぶ。 */
     public void tick(Minecraft minecraft) {
+        clientTicks++;
         while (toggleKey.consumeClick()) toggleEnabled(minecraft);
         var input = AimInputs.capture(minecraft);
         // 一人称へ切り替えた瞬間はモデル自体が描かれなくなる。フェードの残りを持ち越して、
         // 三人称に戻した瞬間に透けた状態から始まらないようにリセットする。
         if (input != null && input.perspective() == Perspective.FIRST_PERSON) controller.resetFade();
         controller.tick(input, previewActive);
+    }
+
+    public long clientTicks() {
+        return clientTicks;
     }
 
     public void setPreviewActive(boolean previewActive) {
