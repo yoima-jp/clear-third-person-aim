@@ -19,6 +19,10 @@ repositories {
     strictMaven("https://api.modrinth.com/maven", "Modrinth", "maven.modrinth")
 }
 
+/** 互換性検証の構成。null (MOD 単体) / "sodium" / "iris" (シェーダーパック無し) / "iris-shader"。 */
+val compat: String? = providers.gradleProperty("cta.compat").orNull
+val screenshotSuffix = if (compat == null) "" else "-$compat"
+
 // MC 非依存のコアロジックはソースとして取り込み、1 つの jar に同梱する(jar-in-jar を避けて依存を単純にする)。
 sourceSets.main {
     java.srcDir(rootProject.file("common/src/main/java"))
@@ -39,14 +43,9 @@ dependencies {
         modCompileOnly("maven.modrinth:modmenu:$it")
         if (providers.gradleProperty("cta.withModMenu").isPresent) modLocalRuntime("maven.modrinth:modmenu:$it")
     }
-    // 互換性検証用 (Phase 8)。-Pcta.withSodium / -Pcta.withIris を付けたときだけ開発クライアントに入れる。
-    sc.properties.getOrNull<String>("deps.sodium")?.let {
-        if (providers.gradleProperty("cta.withSodium").isPresent || providers.gradleProperty("cta.withIris").isPresent)
-            modLocalRuntime("maven.modrinth:sodium:$it")
-    }
-    sc.properties.getOrNull<String>("deps.iris")?.let {
-        if (providers.gradleProperty("cta.withIris").isPresent) modLocalRuntime("maven.modrinth:iris:$it")
-    }
+    // 互換性検証用 (Phase 8)。-Pcta.compat=sodium / iris / iris-shader のときだけ開発クライアントに入れる。
+    if (compat != null) sc.properties.getOrNull<String>("deps.sodium")?.let { modLocalRuntime("maven.modrinth:sodium:$it") }
+    if (compat?.startsWith("iris") == true) sc.properties.getOrNull<String>("deps.iris")?.let { modLocalRuntime("maven.modrinth:iris:$it") }
 }
 
 // Fabric のクライアントゲームテスト API は 1.21.4 以降にしか無い。1.21.1 では作らない (KNOWN_ISSUES.md 参照)。
@@ -67,7 +66,8 @@ loom {
     if (hasClientGameTest) {
         runs.named("clientGameTest") {
             // スクリーンショットと数値結果をルートの build/test-screenshots/<version>-fabric/ に集める。
-            vmArg("-Dcta.screenshotDir=" + rootProject.layout.buildDirectory.dir("test-screenshots/${sc.current.version}-fabric").get().asFile.absolutePath)
+            vmArg("-Dcta.screenshotDir=" + rootProject.layout.buildDirectory.dir("test-screenshots/${sc.current.version}-fabric$screenshotSuffix").get().asFile.absolutePath)
+            vmArg("-Dcta.compat=" + (compat ?: "none"))
         }
     }
 
@@ -124,6 +124,17 @@ tasks {
         val name = project.property("mod.id")
         inputs.property("mod_id", name)
         from("../../LICENSE") { rename { "${it}_$name" } }
+    }
+
+    // iris-shader 構成では、ゲームテスト用の実行ディレクトリに自作の最小シェーダーパックと Iris の設定を置く。
+    // 第三者のシェーダーパックをダウンロードせずに「シェーダーパック使用中」の状態を再現するため。
+    if (hasClientGameTest && compat == "iris-shader") {
+        val prepare = register<Copy>("prepareIrisShaderPack") {
+            from(rootProject.file("testing/iris"))
+            into(layout.buildDirectory.dir("run/clientGameTest"))
+            mustRunAfter("deleteGameTestRunDir")
+        }
+        named("runClientGameTest") { dependsOn(prepare) }
     }
 
     register<Copy>("buildAndCollect") {

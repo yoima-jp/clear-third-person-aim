@@ -42,6 +42,12 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
     private final List<String> results = new ArrayList<>();
     private final List<String> failures = new ArrayList<>();
     private Path outputDir;
+    /**
+     * 互換性検証の構成 (build.fabric.gradle.kts の -Pcta.compat)。"iris-shader" ではシェーダーパック使用中なので
+     * フォールバック描画に切り替わることを期待し、モードごとの厳密な見た目の検証は行わない (フォールバックは全体一律の半透明)。
+     */
+    private final String compat = System.getProperty("cta.compat", "none");
+    private final boolean expectFallback = compat.equals("iris-shader");
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -51,12 +57,13 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        results.add("Clear Third Person Aim client gametest (MC " + ClearThirdPersonAim.MINECRAFT + ", Fabric)");
+        results.add("Clear Third Person Aim client gametest (MC " + ClearThirdPersonAim.MINECRAFT + ", Fabric, compat=" + compat + ")");
 
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             setUpScene(context, world);
             runThirdPersonChecks(context, world);
             runConfigScreenCheck(context);
+            runModMenuCheck(context);
             runFirstPersonCheck(context);
         } finally {
             writeResults();
@@ -187,6 +194,13 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         results.add("[" + tag + "] renderer=" + method + " params=" + params);
         check(params != null, tag + ": transparency did not activate while drawing the bow");
         if (params == null) return;
+        if (expectFallback) {
+            check("FALLBACK_TRANSLUCENT".equals(method), tag + ": expected the fallback renderer while a shader pack is active, got " + method);
+            var stats = ScreenshotAnalysis.compare(active, drawRef, silhouette, null);
+            results.add("[" + tag + "] whole silhouette (fallback): " + stats);
+            check(stats.changedFraction() >= 0.3, tag + ": fallback renderer did not change the player body: " + stats);
+            return;
+        }
         check("OFFSCREEN_COMPOSITE".equals(method), tag + ": expected offscreen compositing but got " + method);
 
         int width = active.getWidth(), height = active.getHeight();
@@ -235,6 +249,7 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
         int limitY = bounds[1] + (int) ((bounds[3] - bounds[1]) * 0.85);
         var stats = ScreenshotAnalysis.compareToBlend(half, drawRef, noPlayer, 0.5, silhouette, (x, y) -> y < limitY);
         results.add("[overlap] opacity 0.5 vs ideal 50% blend: " + stats);
+        if (expectFallback) return; // フォールバックは重なりが透けるので、数値は記録だけする。
         check(stats.pixels() >= ScreenshotAnalysis.MIN_REGION_PIXELS && stats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_BLEND,
                 "opacity 0.5 should look like the opaque player blended at 50% (no inner parts showing through): " + stats);
     }
@@ -311,6 +326,36 @@ public final class ClearAimClientGameTest implements FabricClientGameTest {
             ClearAimClient.get().config().mode = TransparencyMode.AIM_ELLIPSE;
             ClearAimClient.get().saveConfig();
         });
+    }
+
+    /**
+     * Mod Menu が入っている構成 (-Pcta.withModMenu) だけ、Mod Menu の設定ボタンが作る画面が本 MOD の設定画面であることを確かめる。
+     * Mod Menu はゲームテストのコンパイル時依存にしないので、エントリポイントをリフレクションで呼ぶ。
+     */
+    private void runModMenuCheck(ClientGameTestContext context) {
+        var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
+        if (!loader.isModLoaded("modmenu")) {
+            results.add("[modmenu] not installed; integration check skipped (the mod loaded without it)");
+            return;
+        }
+        String screenClass;
+        try {
+            screenClass = context.<String, ReflectiveOperationException>computeOnClient(mc -> {
+            for (var container : loader.getEntrypointContainers("modmenu", Object.class)) {
+                if (!container.getProvider().getMetadata().getId().equals(ClearThirdPersonAim.MOD_ID)) continue;
+                Object api = container.getEntrypoint();
+                Object factory = api.getClass().getMethod("getModConfigScreenFactory").invoke(api);
+                java.lang.reflect.Method create = factory.getClass().getMethod("create", net.minecraft.client.gui.screens.Screen.class);
+                create.setAccessible(true);
+                return create.invoke(factory, (Object) null).getClass().getName();
+            }
+            return "none";
+            });
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Could not call the Mod Menu entrypoint", e);
+        }
+        results.add("[modmenu] config screen factory creates: " + screenClass);
+        check(ConfigScreen.class.getName().equals(screenClass), "Mod Menu should open ConfigScreen, got " + screenClass);
     }
 
     /** GUI 座標 (GUI スケール適用前) をクリックする。 */
