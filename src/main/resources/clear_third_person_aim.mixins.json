@@ -2,13 +2,7 @@
   "required": true,
   "package": "io.github.yoima.clearthirdpersonaim.mixin",
   "compatibilityLevel": "${java}",
-  "client": [
-    "EntityRenderDispatcherMixin",
-    "GameRendererMixin",
-    "ItemInHandLayerMixin",
-    "LevelRendererMixin",
-    "LivingEntityRendererMixin"
-  ],
+  "client": [${mixins}],
   "injectors": {
     "defaultRequire": 1
   }

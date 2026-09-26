@@ -10,7 +10,7 @@ uniform sampler2D PlayerDepth;
 layout(std140) uniform ClearAimParams {
     vec4 Params0;     // x: mode (0 FULL_BODY, 1 UPPER_BODY, 2 AIM_ELLIPSE), y: progress, z: remainingOpacity, w: feather
     vec4 Params1;     // x: radiusX, y: radiusY (画面高さ比), z: waistHeight, w: waistFeather (ブロック)
-    vec4 Params2;     // xy: 画面サイズ (px)
+    vec4 Params2;     // xy: 画面サイズ (px), z: 深度が 0..1 なら 1 (-1..1 なら 0), w: プレイヤーが描かれていない画素の深度 (クリア値)
     vec4 FeetPos;     // xyz: プレイヤー足元 (カメラ相対, ワールド軸)
     mat4 InvViewProj; // クリップ座標 -> カメラ相対ワールド座標
 };
@@ -38,11 +38,7 @@ float transparencyWeight(float depth) {
     if (mode == 1) {
         // 深度からワールド位置を復元し、足元からの高さで上半身/下半身を分ける。
         // パーツ単位ではなく高さで分けるので、1 枚のバッファの中で重なり (胴体の裏の腕など) が正しく処理される。
-#ifdef RENDERPEARL_DEPTH_IS_ZERO_TO_ONE
-        float ndcZ = depth;
-#else
-        float ndcZ = depth * 2.0 - 1.0;
-#endif
+        float ndcZ = Params2.z > 0.5 ? depth : depth * 2.0 - 1.0;
         vec4 world = InvViewProj * vec4(texCoord * 2.0 - 1.0, ndcZ, 1.0);
         float height = world.y / world.w - FeetPos.y;
         return safeSmoothstep(Params1.z - Params1.w, Params1.z + Params1.w, height);
@@ -53,8 +49,8 @@ float transparencyWeight(float depth) {
 void main() {
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     float depth = texelFetch(PlayerDepth, pixel, 0).r;
-    // reversed-Z でクリアした 0 のままならプレイヤーが描かれていない。
-    if (depth == 0.0) {
+    // クリア値のままならプレイヤーが描かれていない。
+    if (depth == Params2.w) {
         discard;
     }
     vec4 color = texelFetch(PlayerColor, pixel, 0);

@@ -11,10 +11,15 @@ val requiredJava = when {
     else -> JavaVersion.VERSION_21
 }
 
+/** 描画 API の世代 (e1〜e4)。buildSrc の ClearAimEras を参照。 */
+val renderEra = ClearAimEras.era { sc.current.parsed >= it }
+
 sourceSets.main {
     java.srcDir(rootProject.file("common/src/main/java"))
     // Fabric 専用パッケージ (エントリポイント・Mod Menu・ゲームテスト) は NeoForge ではコンパイルしない。
     java.exclude("**/fabric/**")
+    // 描画 API の世代に合わないソース (Renderpearl 専用クラスなど) を外す。詳細は buildSrc の ClearAimEras。
+    ClearAimEras.excludedSources(renderEra).forEach { java.exclude(it) }
 }
 
 /** 互換性検証の構成 (-Pcta.compat=sodium / iris / iris-shader)。 */
@@ -89,14 +94,16 @@ tasks {
             register("name", sc.properties["mod.name"])
             register("version", sc.properties["mod.version"])
             register("minecraft", sc.properties["mod.mc_compat"])
-            // 26.3 の NeoForge では logoFile が非推奨になり、正方形アイコンは iconFile で指定する (古い版は iconFile を知らない)。
-            register("icon_key", if (sc.current.parsed >= "26.3") "iconFile" else "logoFile")
+            // 新しい NeoForge では logoFile が非推奨になり、正方形アイコンは iconFile で指定する (古い版は iconFile を知らない)。
+            register("icon_key", if (sc.current.parsed >= "26.1") "iconFile" else "logoFile")
         }
 
         filesMatching("META-INF/neoforge.mods.toml") { expand(props) }
 
         val mixinJava = "JAVA_${requiredJava.majorVersion}"
-        filesMatching("*.mixins.json") { expand("java" to mixinJava) }
+        val mixinList = ClearAimEras.mixinsJson(renderEra)
+        inputs.property("mixins", mixinList)
+        filesMatching("*.mixins.json") { expand("java" to mixinJava, "mixins" to mixinList) }
 
         exclude("fabric.mod.json", "*.ct", "*.classtweaker", "**/*.accesswidener")
     }

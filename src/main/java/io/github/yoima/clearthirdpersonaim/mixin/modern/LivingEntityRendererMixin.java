@@ -1,4 +1,4 @@
-package io.github.yoima.clearthirdpersonaim.mixin;
+package io.github.yoima.clearthirdpersonaim.mixin.modern;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import io.github.yoima.clearthirdpersonaim.render.RenderHooks;

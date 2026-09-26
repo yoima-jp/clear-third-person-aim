@@ -24,10 +24,15 @@ val compat: String? = providers.gradleProperty("cta.compat").orNull
 val screenshotSuffix = if (compat == null) "" else "-$compat"
 
 // MC 非依存のコアロジックはソースとして取り込み、1 つの jar に同梱する(jar-in-jar を避けて依存を単純にする)。
+/** 描画 API の世代 (e1〜e4)。buildSrc の ClearAimEras を参照。 */
+val renderEra = ClearAimEras.era { sc.current.parsed >= it }
+
 sourceSets.main {
     java.srcDir(rootProject.file("common/src/main/java"))
     // NeoForge 専用パッケージは Fabric の classpath では解決できないのでコンパイル対象から外す。
     java.exclude("**/neoforge/**")
+    // 描画 API の世代に合わないソース (Renderpearl 専用クラスなど) を外す。詳細は buildSrc の ClearAimEras。
+    ClearAimEras.excludedSources(renderEra).forEach { java.exclude(it) }
 }
 
 dependencies {
@@ -115,7 +120,9 @@ tasks {
         filesMatching("fabric.mod.json") { expand(props) }
 
         val mixinJava = "JAVA_${requiredJava.majorVersion}"
-        filesMatching("*.mixins.json") { expand("java" to mixinJava) }
+        val mixinList = ClearAimEras.mixinsJson(renderEra)
+        inputs.property("mixins", mixinList)
+        filesMatching("*.mixins.json") { expand("java" to mixinJava, "mixins" to mixinList) }
 
         exclude("META-INF/neoforge.mods.toml")
     }

@@ -113,7 +113,7 @@ public final class AimScenario {
         driver.waitTicks(40);
         driver.runOnClient(mc -> {
             // HUD (クロスヘア・ホットバー) を隠し、ピクセル比較にプレイヤーと背景だけが写るようにする。
-            //? if >=26.3 {
+            //? if >=26.2 {
             if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
             //?} else {
             /*mc.options.hideGui = true;
@@ -359,13 +359,13 @@ public final class AimScenario {
 
     /**
      * 切り替えキー: F7 に割り当ててから押すと全体スイッチが反転し、ファイルにも保存されること。
-     * 実際のキー入力の代わりに、バニラの入力処理が呼ぶ KeyMapping.click を使う (キーコードは InputConstants の定数で、
-     * 26.3 以降の SDL / それ以前の GLFW の違いを吸収する)。最後に未割り当てへ戻す。
+     * 実際のキー入力の代わりに、バニラの入力処理が呼ぶ KeyMapping.click を使う。最後に未割り当てへ戻す。
      */
     private void runKeyBindingCheck() {
         boolean before = driver.computeOnClient(mc -> ClearAimClient.get().config().enabled);
         driver.runOnClient(mc -> {
-            var key = com.mojang.blaze3d.platform.InputConstants.Type.KEYBOARD.getOrCreate(com.mojang.blaze3d.platform.InputConstants.KEY_F7);
+            // 名前で引けば、26.3 以降 (SDL) とそれ以前 (GLFW) のキーコードの違いを気にしなくてよい。
+            var key = com.mojang.blaze3d.platform.InputConstants.getKey("key.keyboard.f7");
             ClearAimClient.get().toggleKey().setKey(key);
             net.minecraft.client.KeyMapping.resetMapping();
             net.minecraft.client.KeyMapping.click(key);

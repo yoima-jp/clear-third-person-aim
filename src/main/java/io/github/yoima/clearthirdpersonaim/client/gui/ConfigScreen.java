@@ -15,7 +15,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-//? if >=26.3 {
+//? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 /*import net.minecraft.client.gui.GuiGraphics;
@@ -279,7 +279,7 @@ public final class ConfigScreen extends Screen {
         ClearAimClient.get().saveConfig();
         ClearAimClient.get().setPreviewActive(false);
         if (cameraBeforePreview != null) minecraft.options.setCameraType(cameraBeforePreview);
-        //? if >=26.3 {
+        //? if >=26.2 {
         minecraft.gui.setScreen(parent);
         //?} else {
         /*minecraft.setScreen(parent);
@@ -316,7 +316,7 @@ public final class ConfigScreen extends Screen {
     private static final int PANEL_COLOR = 0xB0000000;
     private static final int ELLIPSE_COLOR = 0xC0FFE060;
 
-    //? if >=26.3 {
+    //? if >=26.1 {
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (!inWorld()) {

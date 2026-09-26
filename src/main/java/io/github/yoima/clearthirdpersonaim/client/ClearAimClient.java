@@ -146,7 +146,7 @@ public final class ClearAimClient {
         LocalPlayer player = minecraft.player;
         if (player == null) return null;
         if (minecraft.options.getCameraType().isFirstPerson()) return null;
-        //? if >=26.3 {
+        //? if >=26.2 {
         Vec3 cameraPos = minecraft.gameRenderer.mainCamera().position();
         //?} elif >=1.21.2 {
         /*Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().position();

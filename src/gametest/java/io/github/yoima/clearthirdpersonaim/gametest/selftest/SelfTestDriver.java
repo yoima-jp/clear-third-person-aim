@@ -100,7 +100,7 @@ final class SelfTestDriver implements ClientTestDriver {
         waitTicks(1);
         CompletableFuture<Void> done = new CompletableFuture<>();
         runOnClient(m -> {
-            //? if >=26.3 {
+            //? if >=26.2 {
             var target = m.gameRenderer.mainRenderTarget();
             //?} else {
             /*var target = m.getMainRenderTarget();
@@ -141,7 +141,7 @@ final class SelfTestDriver implements ClientTestDriver {
     @Override
     public void setScreen(Supplier<Screen> screen) {
         runOnClient(m -> {
-            //? if >=26.3 {
+            //? if >=26.2 {
             m.gui.setScreen(screen.get());
             //?} else {
             /*m.setScreen(screen.get());
@@ -173,7 +173,7 @@ final class SelfTestDriver implements ClientTestDriver {
 
     /** リソース読み込み画面などのオーバーレイが出ていないか。 */
     static boolean hasNoOverlay(Minecraft m) {
-        //? if >=26.3 {
+        //? if >=26.2 {
         return m.gui.overlay() == null;
         //?} else {
         /*return m.getOverlay() == null;
@@ -181,7 +181,7 @@ final class SelfTestDriver implements ClientTestDriver {
     }
 
     static Screen currentScreen(Minecraft m) {
-        //? if >=26.3 {
+        //? if >=26.2 {
         return m.gui.screen();
         //?} else {
         /*return m.screen;
