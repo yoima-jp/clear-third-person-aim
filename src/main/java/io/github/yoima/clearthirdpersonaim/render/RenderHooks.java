@@ -38,6 +38,8 @@ public final class RenderHooks {
     private static final Vector3f feetRelativeToCamera = new Vector3f();
     /** 実際に描画に使われたワールドの射影行列 (画面揺れ込み)。 */
     private static final Matrix4f levelProjection = new Matrix4f();
+    /** ワールド描画の通し番号。1 フレームに 1 回だけ行う処理 (キャプチャ描画) の判定に使う。 */
+    private static long levelFrame;
 
     private RenderHooks() {
     }
@@ -62,7 +64,12 @@ public final class RenderHooks {
         levelProjection.set(projection);
     }
 
+    public static long levelFrame() {
+        return levelFrame;
+    }
+
     public static void beginLevelRender(float partialTick) {
+        levelFrame++;
         captured = false;
         captureRendered = false;
         capturing = false;

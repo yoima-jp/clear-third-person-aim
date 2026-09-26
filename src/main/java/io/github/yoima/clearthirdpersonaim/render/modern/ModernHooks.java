@@ -89,14 +89,31 @@ public final class ModernHooks {
         }
     }
     //?} else {
-    /*/^* メインの不透明物描画の直前 (描画先の上書きが無い状態) に呼ぶ。 ^/
+    /*private static long lastCaptureFrame = -1;
+
+    /^*
+     * メインの不透明物描画の直前 (描画先の上書きが無い状態) に呼ぶ。同じメソッドは GUI やパーティクルの描画でも
+     * 呼ばれるので、ワールド描画 1 回につき最初の 1 回だけ描く。
+     ^/
     public static void renderCapture() {
-        if (!RenderHooks.hasCapture() || compositor == null) return;
+        if (!RenderHooks.hasCapture() || compositor == null || lastCaptureFrame == RenderHooks.levelFrame()) return;
+        lastCaptureFrame = RenderHooks.levelFrame();
         try {
             compositor.renderCapture(RenderHooks.frame());
             RenderHooks.setCaptureRendered(true);
         } catch (RuntimeException | LinkageError e) {
             RenderHooks.onCompositorFailure("offscreen capture", e);
+        }
+    }
+
+    /^* メインのバッファを描き切ってから合成する (この世代では登録内容がバッファに溜まっているだけで、まだ描かれていないため)。 ^/
+    public static void flushMainBuffersAndComposite() {
+        if (!RenderHooks.takeCaptureForComposite()) return;
+        try {
+            Minecraft.getInstance().renderBuffers().bufferSource().endBatch();
+            compositor.composite();
+        } catch (RuntimeException | LinkageError e) {
+            RenderHooks.onCompositorFailure("composite", e);
         }
     }
     *///?}
@@ -110,7 +127,7 @@ public final class ModernHooks {
             RenderHooks.onCompositorFailure("composite", e);
         }
     }
-    //?} else {
+    //?} elif >=26.2 {
     /*public static void composite() {
         if (!RenderHooks.takeCaptureForComposite()) return;
         try {

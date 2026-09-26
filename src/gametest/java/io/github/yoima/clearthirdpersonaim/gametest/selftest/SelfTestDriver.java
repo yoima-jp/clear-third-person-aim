@@ -215,7 +215,10 @@ final class SelfTestDriver implements ClientTestDriver {
         runOnClient(m -> {
             //? if >=26.1 {
             LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, LevelSettings.DifficultySettings.DEFAULT, true, WorldDataConfiguration.DEFAULT);
-            //?} else {
+            //?} elif >=1.21.11 {
+            /*LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, false, net.minecraft.world.Difficulty.PEACEFUL, true,
+                    new net.minecraft.world.level.gamerules.GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures()), WorldDataConfiguration.DEFAULT);
+            *///?} else {
             /*LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, false, net.minecraft.world.Difficulty.PEACEFUL, true,
                     new net.minecraft.world.level.GameRules(), WorldDataConfiguration.DEFAULT);
             *///?}

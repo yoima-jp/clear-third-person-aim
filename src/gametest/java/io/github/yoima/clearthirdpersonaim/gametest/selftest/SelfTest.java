@@ -70,6 +70,18 @@ public final class SelfTest {
             if (scenario != null) scenario.writeResults();
         }
         ClearThirdPersonAim.LOGGER.info("[client-test] finished with exit code {}", exitCode);
-        System.exit(exitCode);
+        if (exitCode == 0) {
+            // 成功時は通常の終了手順 (描画スレッドで stop) を踏む。別スレッドから System.exit すると、
+            // Windows では OpenAL / ウィンドウの後始末がスレッド違いで異常終了し、終了コードが壊れることがある。
+            mc.execute(mc::stop);
+        } else {
+            // 失敗時は Gradle のタスクを失敗させるため、ログを書き出す時間だけ待って終了コード 1 で止める。
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            Runtime.getRuntime().halt(1);
+        }
     }
 }

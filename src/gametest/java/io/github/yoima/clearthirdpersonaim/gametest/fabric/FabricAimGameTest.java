@@ -27,7 +27,13 @@ public final class FabricAimGameTest implements FabricClientGameTest {
         AimScenario scenario = new AimScenario(driver, "Fabric", FabricLoader.getInstance().getConfigDir());
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             driver.world = world;
+            //? if >=26.2 {
             world.getConnection().waitForChunksRender();
+            //?} elif >=26.1 {
+            /*world.getClientLevel().waitForChunksRender();
+            *///?} else {
+            /*world.getClientWorld().waitForChunksRender();
+            *///?}
             scenario.run();
             runModMenuCheck(context, scenario);
         } finally {
