@@ -1,0 +1,7 @@
+{
+  "key.categories.clear_third_person_aim": "Clear Third Person Aim",
+  "key.category.clear_third_person_aim.keys": "Clear Third Person Aim",
+  "key.clear_third_person_aim.toggle": "Toggle Aim Transparency",
+  "message.clear_third_person_aim.enabled": "Aim transparency: ON",
+  "message.clear_third_person_aim.disabled": "Aim transparency: OFF"
+}

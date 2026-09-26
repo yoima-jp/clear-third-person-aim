@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "clear_third_person_aim_gametest",
+  "version": "1.0.0",
+  "name": "Clear Third Person Aim client gametest",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["io.github.yoima.clearthirdpersonaim.gametest.ClearAimClientGameTest"]
+  },
+  "depends": {
+    "clear_third_person_aim": "*"
+  }
+}

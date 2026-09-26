@@ -1,0 +1,7 @@
+{
+  "key.categories.clear_third_person_aim": "Clear Third Person Aim",
+  "key.category.clear_third_person_aim.keys": "Clear Third Person Aim",
+  "key.clear_third_person_aim.toggle": "エイム時の透明化を切り替え",
+  "message.clear_third_person_aim.enabled": "エイム時の透明化: ON",
+  "message.clear_third_person_aim.disabled": "エイム時の透明化: OFF"
+}
