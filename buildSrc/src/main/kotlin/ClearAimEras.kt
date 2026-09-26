@@ -39,9 +39,9 @@ object ClearAimEras {
 
     /** mixins.json の "client" 配列に入れる Mixin クラス (パッケージ io.github.yoima.clearthirdpersonaim.mixin からの相対名)。 */
     fun mixins(era: String): List<String> = when (era) {
+        // 1.21.1 は LevelRenderer#renderLevel の引数に実際の射影行列が渡るので、GameRenderer への注入は無い。
         "e1" -> listOf(
             "legacy.EntityRenderDispatcherMixin",
-            "legacy.GameRendererMixin",
             "legacy.ItemInHandLayerMixin",
             "legacy.LevelRendererMixin",
             "legacy.LivingEntityRendererMixin",

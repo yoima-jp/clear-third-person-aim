@@ -67,7 +67,33 @@ if (hasClientGameTest) {
     }
 }
 
+// ゲームテスト API の無いバージョンでは、NeoForge と同じ自作のクライアントテスト (runSelfTest) を使う。
+val selfTestSourceSet: SourceSet? = if (hasClientGameTest) null else sourceSets.create("gametest") {
+    compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().runtimeClasspath + sourceSets.main.get().output
+    java.exclude("**/fabric/**")
+    resources.exclude("fabric.mod.json")
+}
+
 loom {
+    if (selfTestSourceSet != null) {
+        mods {
+            register(property("mod.id") as String) {
+                sourceSet(sourceSets.main.get())
+                sourceSet(selfTestSourceSet)
+            }
+        }
+        runs {
+            register("selfTest") {
+                client()
+                source(selfTestSourceSet)
+                runDir("build/run/selfTest")
+                vmArg("-Dcta.selftest=true")
+                vmArg("-Dcta.compat=" + (compat ?: "none"))
+                vmArg("-Dcta.screenshotDir=" + rootProject.layout.buildDirectory.dir("test-screenshots/${sc.current.version}-fabric$screenshotSuffix").get().asFile.absolutePath)
+            }
+        }
+    }
     if (hasClientGameTest) {
         runs.named("clientGameTest") {
             // スクリーンショットと数値結果をルートの build/test-screenshots/<version>-fabric/ に集める。
@@ -142,6 +168,22 @@ tasks {
             mustRunAfter("deleteGameTestRunDir")
         }
         named("runClientGameTest") { dependsOn(prepare) }
+    }
+
+    if (!hasClientGameTest) {
+        val cleanSelfTestRun = register<Delete>("cleanSelfTestRun") {
+            delete(layout.buildDirectory.dir("run/selfTest"))
+        }
+        if (compat == "iris-shader") {
+            val prepare = register<Copy>("prepareIrisShaderPack") {
+                from(rootProject.file("testing/iris"))
+                into(layout.buildDirectory.dir("run/selfTest"))
+                dependsOn(cleanSelfTestRun)
+            }
+            named("runSelfTest") { dependsOn(prepare) }
+        } else {
+            named("runSelfTest") { dependsOn(cleanSelfTestRun) }
+        }
     }
 
     register<Copy>("buildAndCollect") {
