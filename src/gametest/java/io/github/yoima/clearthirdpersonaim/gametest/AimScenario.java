@@ -120,6 +120,8 @@ public final class AimScenario {
             /*mc.options.hideGui = true;
             *///?}
             mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            // 雲は撮影の合間に動き、プレイヤーのシルエット (差分) に混ざる。Fabric のゲームテスト API と同じく切る。
+            mc.options.cloudStatus().set(net.minecraft.client.CloudStatus.OFF);
             //? if >=1.21.5 {
             mc.player.getInventory().setSelectedSlot(0);
             //?} else {

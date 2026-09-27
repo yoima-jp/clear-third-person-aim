@@ -58,17 +58,12 @@
 - [x] 1.21.11 (Fabric / NeoForge)
 - [x] 1.21.1 (Fabric / NeoForge)
 - [x] 全バージョン × ローダーで基本シナリオの自動テスト PASS、Fabric 配布 jar の本番起動確認 PASS
-- [ ] 互換マトリクス (testing/run-all-client-tests.sh) の残り: 1.21.11 fabric iris / iris-shader、1.21.11 neoforge 全構成、1.21.1 全構成が未実行
-- [ ] 調査中: 26.2 NeoForge + Sodium + Iris + テスト用シェーダーパックでクラッシュ (Iris の HandRenderer → renderAllFeatures 内の ArrayIndexOutOfBounds。本 MOD 無しで再現するか未確認)
-- [ ] 調査中: 26.1.2 Fabric の sodium / iris 構成でテストは PASS だがプロセスの終了コードが 1 (終了処理の問題か未確認)
-
-## 次にやること (再開時)
-1. 上の調査 2 件 (build/test-logs/ のログを参照)
-2. `bash testing/run-all-client-tests.sh 1.21.11` と `... 1.21.1` で残りの互換マトリクスを実行
-3. Phase 11: README (日英)、CHANGELOG、TEST_REPORT 完成、KNOWN_ISSUES 追記 (発光の輪郭線が合成中は出ない、UPPER_BODY は高さ判定なので水泳/エリトラ姿勢では不正確 等)
+- [x] 互換マトリクス全 36 構成を実行 (34 PASS、2 件は外部 MOD 側の問題として KNOWN_ISSUES K-003 / K-004 に記録)
+- [x] 26.2 NeoForge + Iris + シェーダーパックのクラッシュ調査 (Iris 側。K-003)
+- [x] 26.1.2 Fabric + Sodium の終了コード調査 (Fabric テスト API の撮影と Sodium。K-004。テストの誤 PASS 表示は修正)
 
 ## Phase 11: 仕上げ
-- [ ] README (日英)
-- [ ] CHANGELOG
-- [ ] TEST_REPORT
-- [ ] 最終チェックリスト
+- [x] README (日英)
+- [x] CHANGELOG
+- [x] TEST_REPORT
+- [x] 最終チェックリスト (指示書 8 章)
