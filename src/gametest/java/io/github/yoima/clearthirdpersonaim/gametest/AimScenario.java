@@ -138,7 +138,13 @@ public final class AimScenario {
             config.hideHeldItems = false;
             config.distanceCompensation = true;
         });
-        driver.waitTicks(20);
+        // fill で置いた床・壁の再メッシュ化は非同期で、Sodium 導入時は一部の区画が長く古いまま残ることがある
+        // (数十 tick 変化しないので安定判定をすり抜ける)。全区画を明示的に作り直してから安定を待つ。
+        // (26.2 以降は allChanged が無く、この遅れも観測されていないので行わない。)
+        //? if <26.2 {
+        /*driver.runOnClient(mc -> mc.levelRenderer.allChanged());
+        *///?}
+        driver.waitTicks(40);
         waitForStableScene();
     }
 

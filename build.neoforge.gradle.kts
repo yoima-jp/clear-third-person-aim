@@ -71,6 +71,9 @@ neoForge {
             systemProperty("cta.compat", compat ?: "none")
             systemProperty("cta.screenshotDir", rootProject.layout.buildDirectory.dir("test-screenshots/${sc.current.version}-neoforge$screenshotSuffix").get().asFile.absolutePath)
             sourceSet = gametest
+            // 互換構成では、本番 (既定で無効) と同じく NeoForge の OpenGL 描画検証も切る。Iris 1.11.4 (26.2) は
+            // 頂点形式の配列を 1 枠に置き換えるため、この検証が 2 枠目を読んで落ちる (KNOWN_ISSUES K-003)。
+            if (compat != null) systemProperty("neoforge.disableGlValidation", "true")
         }
     }
 }
@@ -113,7 +116,7 @@ tasks {
     val cleanSelfTestRun = register<Delete>("cleanSelfTestRun") {
         delete(layout.buildDirectory.dir("run/selfTest"))
     }
-    // 互換性検証 (Sodium / Iris) では NeoForge の Blaze3D 検証レイヤーを切る。開発環境だけで既定 ON の機能で、
+    // 互換性検証 (Sodium / Iris) では NeoForge の Blaze3D 検証レイヤーを切る (OpenGL 描画検証は runs の selfTest で切る)。開発環境だけで既定 ON の機能で、
     // Sodium / Iris は検証用のラッパー型を OpenGL の型へキャストして落ちるため、本番 (検証 OFF) と同じ条件で確かめる。
     // MOD 単体のテストは検証 ON のまま走らせ、この MOD の Blaze3D の使い方が正しいことも確かめる。
     val prepare = register<Copy>("setUpSelfTestRunDir") {

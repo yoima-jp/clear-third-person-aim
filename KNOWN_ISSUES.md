@@ -19,12 +19,13 @@
 - 症状: シェーダーパック有効時、Iris の手描画 (`HandRenderer`) 中に `GlCommandEncoder.validateDraw` の `ArrayIndexOutOfBoundsException` でクラッシュする。
 - 原因: Iris 1.11.4 の `MixinRenderPipeline` が頂点形式の配列を 16 枠から 1 枠に置き換える。NeoForge の開発環境で有効な OpenGL 描画検証が 2 枠目を読むと例外になる。[Iris の既知の報告](https://github.com/IrisShaders/Iris/issues/3304)と、この環境のスタック・JAR のバイトコードが一致する。
 - 切り分け: この MOD の Mixin をすべて無効にしても再現。手描画用シェーダープログラムの追加や、既存の Blaze3D 検証レイヤー設定を切っても変化しない。Iris のパック無し構成と、同じ Iris・パックの Fabric 構成は PASS。
-- 開発時の回避: ゲーム JVM に `-Dneoforge.disableGlValidation=true` を渡すと、同じ構成の `runSelfTest` が `RESULT: PASS`。描画検証が無効になるため、MOD 単体の検証では使用しない。本番環境ではこの検証は既定で無効。この MOD に Iris の配列を修正するコードは入れていない。詳細は `testing/investigations/26.2-neoforge-iris-shader.md`。
+- 対応: 互換構成のテスト (`-Pcta.compat`) では、本番の既定と同じくこの検証を切る (`-Dneoforge.disableGlValidation=true`、build.neoforge.gradle.kts)。この条件で PASS。MOD 単体のテストは検証を有効にしたまま実行する。本番環境ではこの検証は既定で無効なので、実際のプレイには影響しないと見ている。この MOD に Iris の配列を修正するコードは入れていない。詳細は `testing/investigations/26.2-neoforge-iris-shader.md`。
 
-## K-004 26.1.2 Fabric + Sodium の自動テストが撮影中に終了する
+## K-004 26.1.2 Fabric + Sodium で Fabric テスト API の撮影処理が例外を投げる
 - 症状: Fabric のクライアントゲームテスト API の最初のスクリーンショットで、Sodium 0.9.2 が `Global terrain uniforms have not been updated` を投げてテストが中断する。Iris を加えたパック無し構成でも同じ。MOD の透明化はまだ無効の状態。
 - 原因: 使用中の Fabric client game test API `5.1.0+0a5283664c` は撮影時に `GameRenderer.extract()` と `render()` を直接呼ぶが、先に必要な `update()` を呼ばない。Sodium は `update()` 経由で準備される terrain uniform が無いまま描画されると例外を投げる。[Fabric API issue #5466](https://github.com/FabricMC/fabric-api/issues/5466) とローカルのスタック・JAR のバイトコードが一致する。
-- 対応と影響: テスト中断を誤って `RESULT: PASS` と出していた問題は修正済み。撮影経路そのものは修正しておらず、26.1.2 Fabric + Sodium / Iris (パック無し) の自動テストは未完了。Iris + シェーダーパック構成は同じテストで PASS しているが、差の理由は未特定。通常プレイでの動作は未確認。詳細は `testing/investigations/26.1.2-fabric-exit-code.md`。
+- 対応: テスト中断を誤って `RESULT: PASS` と出していた問題は修正済み。さらに、Sodium を入れた Fabric 構成では Fabric の撮影処理を使わず、直前に通常描画されたフレームを撮影するようにした (`FabricAimGameTest`)。これで 26.1.2 Fabric + Sodium / Iris も PASS。Fabric API 側の撮影処理そのものは直していない (上流の修正待ち)。
+- 残る影響: 撮影処理に固有の問題で、通常のプレイは `update()` を経由するため同じ経路を通らないと見ている (通常プレイでの確認は未実施)。詳細は `testing/investigations/26.1.2-fabric-exit-code.md`。
 
 ## K-005 互換テストの環境調整 (本番の動作には影響しない)
 - NeoForge の開発環境は Blaze3D の検証レイヤーが既定で有効で、Sodium / Iris が検証用のラッパー型を OpenGL の型へキャストして落ちる。本番は既定で無効なので、互換構成のテストだけ切っている (`testing/neoforge-compat/`)。MOD 単体のテストは検証レイヤー有効のまま実行し、この MOD の Blaze3D の使い方が検証を通ることも確認している。
@@ -36,3 +37,7 @@
 - UPPER_BODY は足元からの高さで上下を分けるので、水泳・エリトラ飛行・睡眠など体が横になる姿勢では境界が不自然になる。構えている間 (立ち・しゃがみ) を想定している。
 - 透けている部分の後ろにある半透明物 (水・色付きガラス) は、合成より後に描かれるため透けた体の手前に重なって見える。不透明な部分 (マスク外) では前後関係は正しい。
 - 設定画面をワールド内で開いている間は、プレビューのためゲームを一時停止しない。
+
+## K-007 自作テストドライバの安定化 (テストの仕組み側)
+- 自作ドライバ (`runSelfTest`) は実際のマウス入力を遮断しないため、テスト中にマウスを動かすと視点が動き比較が失敗することがあった。待機のたびにマウスの捕捉を外すようにした。
+- Sodium 導入時 (1.21.11 NeoForge で観測)、fill で置いた床の一部の区画が数十 tick 古いまま残り、途中で描き変わって比較が失敗することがあった。1.21.11 / 26.1.2 / 1.21.1 ではシーン準備後に全区画を作り直してから画面の安定を待つ。26.2 以降は該当 API が無く、この遅れも観測していない。

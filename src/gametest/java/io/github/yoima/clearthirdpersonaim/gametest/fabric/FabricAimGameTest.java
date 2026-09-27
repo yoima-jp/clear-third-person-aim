@@ -101,9 +101,44 @@ public final class FabricAimGameTest implements FabricClientGameTest {
             world.getServer().runCommand(command);
         }
 
+        /**
+         * Sodium が入っているときは、Fabric の撮影処理を使わず、直前に通常描画されたフレームを撮影する。
+         * Fabric の撮影処理は GameRenderer#update を呼ばずに描画し直すため、Sodium 0.9.2 (26.1.2) が
+         * 「terrain uniform が未更新」で例外を投げてテストが中断する (Fabric API issue #5466、KNOWN_ISSUES K-004)。
+         * 自作ドライバと同じく、1 tick 進めて最新のフレームを読み戻す。それ以外の構成では Fabric の撮影処理をそのまま使う。
+         */
         @Override
         public Path screenshot(String name, Path directory) {
-            return context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withDestinationDir(directory));
+            if (!FabricLoader.getInstance().isModLoaded("sodium")) {
+                return context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withDestinationDir(directory));
+            }
+            Path file = directory.resolve(name + ".png");
+            try {
+                java.nio.file.Files.createDirectories(directory);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+            context.waitTick();
+            java.util.concurrent.CompletableFuture<Void> done = new java.util.concurrent.CompletableFuture<>();
+            context.runOnClient(mc -> {
+                //? if >=26.2 {
+                var target = mc.gameRenderer.mainRenderTarget();
+                //?} else {
+                /*var target = mc.getMainRenderTarget();
+                *///?}
+                net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                    try (image) {
+                        image.writeToFile(file);
+                        done.complete(null);
+                    } catch (Throwable t) {
+                        done.completeExceptionally(t);
+                    }
+                });
+            });
+            // 読み戻しは非同期なので、完了するまで tick を進める。
+            for (int i = 0; i < 200 && !done.isDone(); i++) context.waitTick();
+            done.join();
+            return file;
         }
 
         @Override

@@ -46,8 +46,8 @@ Fabric の全 5 バージョンで、配布用 jar (1.21.x は intermediary へ 
 | 26.3 | Fabric | PASS | PASS | PASS | PASS (フォールバック) |
 | 26.3 | NeoForge | PASS | PASS | — (Iris の NeoForge 版なし) | — |
 | 26.2 | Fabric | PASS | PASS | PASS | PASS (フォールバック) |
-| 26.2 | NeoForge | PASS | PASS | PASS | **FAIL** (開発環境の OpenGL 描画検証時、K-003)。検証無効時は PASS |
-| 26.1.2 | Fabric | PASS | **FAIL** (テスト API と Sodium、K-004) | **FAIL** (同左) | PASS (フォールバック) |
+| 26.2 | NeoForge | PASS | PASS | PASS | PASS (フォールバック。OpenGL 描画検証を切った条件、K-003) |
+| 26.1.2 | Fabric | PASS | PASS (撮影方法を変更、K-004) | PASS (同左) | PASS (フォールバック) |
 | 26.1.2 | NeoForge | PASS | PASS | PASS | PASS (フォールバック) |
 | 1.21.11 | Fabric | PASS | PASS | PASS | PASS (フォールバック) |
 | 1.21.11 | NeoForge | PASS | PASS | PASS | PASS (フォールバック) |
@@ -56,8 +56,9 @@ Fabric の全 5 バージョンで、配布用 jar (1.21.x は intermediary へ 
 
 使用した版: Sodium 0.9.3-alpha.1 (26.3) / 0.9.2 (26.1.2, 26.2) / 0.8.15-beta.1 (1.21.11 単体) / 0.8.13 (1.21.1 単体)、Iris 1.11.6 (26.3) / 1.11.4 (26.1, 26.2) / 1.10.7 (1.21.11) / 1.8.8 (1.21.1 Fabric) / 1.8.12 (1.21.1 NeoForge)。Iris 構成の Sodium は Iris の必須依存の版に合わせた (stonecutter.properties.toml の deps.sodium_iris)。
 テスト環境側の調整 (本番の動作には影響しない): NeoForge の互換構成では開発環境専用の Blaze3D 検証レイヤーを切る、Fabric 1.21.11 の Iris に同梱ライブラリを開発クラスパスへ追加する。詳細は KNOWN_ISSUES K-005。
-26.2 NeoForge + Iris 1.11.4 + シェーダーパックでは、別の OpenGL 描画検証が Iris の頂点形式配列を検査してクラッシュする。ゲーム JVM に `-Dneoforge.disableGlValidation=true` を渡した再実行は `RESULT: PASS` (2026-09-27)。通常の互換マトリクスの FAIL は既定の開発環境での結果を残す。詳細は K-003。
-26.1.2 Fabric + Sodium / Iris (パック無し) では、Fabric の撮影処理が `GameRenderer.update()` を呼ばずに描画し、Sodium の terrain uniform が未更新のまま例外になる。使用中の Fabric client game test API `5.1.0+0a5283664c` にもこの呼び出しが無いことを確認した。Iris + シェーダーパックは PASS したが、この差の理由は未特定。詳細は K-004。
+NeoForge の互換構成では、本番の既定と同じく OpenGL 描画検証 (`-Dneoforge.disableGlValidation=true`) も切る。26.2 NeoForge + Iris 1.11.4 + シェーダーパックは、この検証を有効にしたままだと Iris の頂点形式配列を検査してクラッシュする (K-003)。
+Sodium を入れた Fabric 構成では、Fabric のテスト API の撮影処理 (`GameRenderer.update()` を呼ばずに描画し直す) の代わりに、直前に通常描画されたフレームを撮影する。26.1.2 + Sodium 0.9.2 はこの撮影処理で例外になるため (K-004)。
+全 38 構成 (上表で「—」以外) は 2026-09-28 の最終実行ですべて PASS (`testing/results/compat-matrix-2026-09-28-final.txt`)。
 調査報告: `testing/investigations/`、途中経過: `testing/results/`。
 
 ## 3. 人間の目視確認が必要な項目

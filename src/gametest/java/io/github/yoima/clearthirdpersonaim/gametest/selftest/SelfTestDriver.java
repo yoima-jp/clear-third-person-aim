@@ -43,6 +43,11 @@ final class SelfTestDriver implements ClientTestDriver {
 
     @Override
     public void waitTicks(int ticks) {
+        // 実際のマウス操作が視点を動かさないよう、待つたびにマウスの捕捉を外す (Fabric のゲームテスト API は実入力を遮断するが、
+        // 自作ドライバでは遮断していないため。テスト中に人がマウスを動かすと、比較用の画面がずれて失敗していた)。
+        runOnClient(m -> {
+            if (m.mouseHandler.isMouseGrabbed()) m.mouseHandler.releaseMouse();
+        });
         long target = ClearAimClient.get().clientTicks() + ticks;
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(CLIENT_TIMEOUT_SECONDS + ticks / 20);
         while (ClearAimClient.get().clientTicks() < target) {
