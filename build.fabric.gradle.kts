@@ -51,8 +51,17 @@ dependencies {
         if (providers.gradleProperty("cta.withModMenu").isPresent) modLocalRuntime("maven.modrinth:modmenu:$it")
     }
     // 互換性検証用 (Phase 8)。-Pcta.compat=sodium / iris / iris-shader のときだけ開発クライアントに入れる。
-    if (compat != null) sc.properties.getOrNull<String>("deps.sodium")?.let { modLocalRuntime("maven.modrinth:sodium:$it") }
+    val sodiumVersion = (if (compat?.startsWith("iris") == true) sc.properties.getOrNull<String>("deps.sodium_iris") else null)
+        ?: sc.properties.getOrNull<String>("deps.sodium")
+    if (compat != null) sodiumVersion?.let { modLocalRuntime("maven.modrinth:sodium:$it") }
     if (compat?.startsWith("iris") == true) sc.properties.getOrNull<String>("deps.iris")?.let { modLocalRuntime("maven.modrinth:iris:$it") }
+    // Iris 1.10.x (1.21.11) は同梱ライブラリ (jcpp / glsl-transformer / antlr) を開発環境では解決できず、
+    // シェーダーパックの読み込みに失敗する。版は Iris の jar に同梱されているものに合わせる。
+    if (compat?.startsWith("iris") == true) {
+        "localRuntime"("org.anarres:jcpp:1.4.14")
+        "localRuntime"("io.github.douira:glsl-transformer:3.0.0-pre3")
+        "localRuntime"("org.antlr:antlr4-runtime:4.13.1")
+    }
 }
 
 // Fabric のクライアントゲームテスト API は 1.21.4 以降にしか無い。1.21.1 では作らない (KNOWN_ISSUES.md 参照)。
@@ -116,7 +125,7 @@ loom {
     }
     // 手動起動用の実行ディレクトリはバージョンごとに分ける。ゲームテストは毎回削除される専用ディレクトリ
     // (Loom 既定の build/run/clientGameTest) を使い、手動用のワールドや設定を消さない。
-    runConfigs.matching { it.name != "clientGameTest" }.configureEach {
+    runConfigs.matching { it.name != "clientGameTest" && it.name != "selfTest" }.configureEach {
         runDirectory = rootProject.file("run/fabric-${sc.current.version}")
     }
 }

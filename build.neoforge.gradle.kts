@@ -42,7 +42,9 @@ repositories {
 }
 
 dependencies {
-    if (compat != null) sc.properties.getOrNull<String>("deps.sodium")?.let { "runtimeOnly"("maven.modrinth:sodium:$it") }
+    val sodiumVersion = (if (compat?.startsWith("iris") == true) sc.properties.getOrNull<String>("deps.sodium_iris") else null)
+        ?: sc.properties.getOrNull<String>("deps.sodium")
+    if (compat != null) sodiumVersion?.let { "runtimeOnly"("maven.modrinth:sodium:$it") }
     if (compat?.startsWith("iris") == true) sc.properties.getOrNull<String>("deps.iris")?.let { "runtimeOnly"("maven.modrinth:iris:$it") }
 }
 
@@ -111,16 +113,16 @@ tasks {
     val cleanSelfTestRun = register<Delete>("cleanSelfTestRun") {
         delete(layout.buildDirectory.dir("run/selfTest"))
     }
-    if (compat == "iris-shader") {
-        val prepare = register<Copy>("prepareIrisShaderPack") {
-            from(rootProject.file("testing/iris"))
-            into(layout.buildDirectory.dir("run/selfTest"))
-            dependsOn(cleanSelfTestRun)
-        }
-        named("runSelfTest") { dependsOn(prepare) }
-    } else {
-        named("runSelfTest") { dependsOn(cleanSelfTestRun) }
+    // 互換性検証 (Sodium / Iris) では NeoForge の Blaze3D 検証レイヤーを切る。開発環境だけで既定 ON の機能で、
+    // Sodium / Iris は検証用のラッパー型を OpenGL の型へキャストして落ちるため、本番 (検証 OFF) と同じ条件で確かめる。
+    // MOD 単体のテストは検証 ON のまま走らせ、この MOD の Blaze3D の使い方が正しいことも確かめる。
+    val prepare = register<Copy>("setUpSelfTestRunDir") {
+        dependsOn(cleanSelfTestRun)
+        into(layout.buildDirectory.dir("run/selfTest"))
+        if (compat != null) from(rootProject.file("testing/neoforge-compat"))
+        if (compat == "iris-shader") from(rootProject.file("testing/iris"))
     }
+    named("runSelfTest") { dependsOn(prepare) }
 
     named("createMinecraftArtifacts") {
         dependsOn("stonecutterGenerate")

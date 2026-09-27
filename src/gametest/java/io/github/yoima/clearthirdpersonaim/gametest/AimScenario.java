@@ -137,6 +137,27 @@ public final class AimScenario {
             config.distanceCompensation = true;
         });
         driver.waitTicks(20);
+        waitForStableScene();
+    }
+
+    /**
+     * 画面が落ち着くまで待つ。地形の再構築 (fill で置いた床や壁) は非同期で、Sodium / Iris 導入時は特に遅れるため、
+     * 固定の待ち時間だけだと基準画像に古い地形が写ることがある。連続する 2 枚がほぼ一致するまで撮り直す。
+     */
+    private void waitForStableScene() {
+        BufferedImage previous = shot("_stability_check");
+        for (int attempt = 0; attempt < 30; attempt++) {
+            driver.waitTicks(10);
+            BufferedImage current = shot("_stability_check");
+            var stats = ScreenshotAnalysis.compare(current, previous, null, null);
+            if (stats.meanDiff() <= ScreenshotAnalysis.MAX_MEAN_DIFF_IDENTICAL
+                    && stats.changedFraction() <= ScreenshotAnalysis.MAX_CHANGED_FRACTION_IDENTICAL) {
+                results.add("scene became stable after " + (attempt + 1) + " check(s)");
+                return;
+            }
+            previous = current;
+        }
+        results.add("scene did not become fully stable; continuing");
     }
 
     private BufferedImage shot(String name) {

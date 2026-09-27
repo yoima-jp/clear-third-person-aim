@@ -1,3 +1,5 @@
+# deps.sodium_iris: Iris を入れる互換テスト構成で使う Sodium の版。Iris は特定の Sodium の版を必須依存にしているため
+# (Modrinth の依存情報に合わせる)。無ければ deps.sodium を使う。
 mod.id = "clear_third_person_aim"
 mod.name = "Clear Third Person Aim"
 mod.group = "io.github.yoima.clearthirdpersonaim"
@@ -10,15 +12,18 @@ loomx.loom_version = "1.18.2"
 mod.mc_releases = ["1.21", "1.21.1"]
 
 [fabric."1.21.1"]
+deps.sodium_iris = "mc1.21.1-0.6.13-fabric"
 deps.sodium = "mc1.21.1-0.8.13-fabric"
-deps.iris = "1.8.14-beta.1+1.21.1-fabric"
+# 1.8.14-beta.1 はこの Fabric Loader では Mixin の解析に失敗するため、安定版を使う。
+deps.iris = "1.8.8+1.21.1-fabric"
 deps.modmenu = "11.0.5"
 mod.mc_compat = ">=1.21 <=1.21.1"
 deps.fabric_api = "0.116.17+1.21.1"
 
 [neoforge."1.21.1"]
+deps.sodium_iris = "mc1.21.1-0.6.13-neoforge"
 deps.sodium = "mc1.21.1-0.8.13-neoforge"
-deps.iris = "1.8.14-beta.1+1.21.1-neoforge"
+deps.iris = "1.8.12+1.21.1-neoforge"
 mod.mc_compat = "[1.21, 1.21.1]"
 deps.neo_loader = "21.1.251"
 
@@ -26,6 +31,7 @@ deps.neo_loader = "21.1.251"
 mod.mc_releases = ["1.21.11"]
 
 [fabric."1.21.11"]
+deps.sodium_iris = "mc1.21.11-0.8.7-fabric"
 deps.sodium = "mc1.21.11-0.8.15-beta.1-fabric"
 deps.iris = "1.10.7+1.21.11-fabric"
 deps.modmenu = "17.0.1"
@@ -33,6 +39,7 @@ mod.mc_compat = "1.21.11"
 deps.fabric_api = "0.141.6+1.21.11"
 
 [neoforge."1.21.11"]
+deps.sodium_iris = "mc1.21.11-0.8.7-neoforge"
 deps.sodium = "mc1.21.11-0.8.15-beta.1-neoforge"
 deps.iris = "1.10.7+1.21.11-neoforge"
 mod.mc_compat = "[1.21.11]"

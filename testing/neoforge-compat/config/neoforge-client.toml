@@ -1,0 +1,2 @@
+# 互換性検証用 (build.neoforge.gradle.kts の setUpSelfTestRunDir が -Pcta.compat のときだけ実行ディレクトリへ置く)。
+enableB3DValidationLayer = false
