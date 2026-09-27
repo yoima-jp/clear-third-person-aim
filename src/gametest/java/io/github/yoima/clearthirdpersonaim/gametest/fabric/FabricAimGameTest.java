@@ -36,6 +36,10 @@ public final class FabricAimGameTest implements FabricClientGameTest {
             *///?}
             scenario.run();
             runModMenuCheck(context, scenario);
+        } catch (RuntimeException | Error failure) {
+            // finally でも結果を書き出すため、未捕捉例外を先に失敗として記録し、誤った PASS を防ぐ。
+            scenario.check(false, "client test aborted: " + failure);
+            throw failure;
         } finally {
             scenario.writeResults();
         }
