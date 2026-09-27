@@ -94,17 +94,24 @@ class MaskMathTest {
     }
 
     @Test
-    void controllerAppliesDistanceCompensation() {
+    void controllerAppliesProjectionCompensation() {
         Config config = new Config();
         config.transition = TransitionMode.INSTANT;
         ClearAimController controller = new ClearAimController(config);
         controller.tick(new AimInput(Perspective.THIRD_PERSON_BACK, HeldItem.of("minecraft:bow", ItemKind.BOW), HeldItem.EMPTY, AimInput.Hand.MAIN));
-        FrameParams near = controller.frame(0f, 2f, 1f, false);
-        assertEquals(0.32f, near.radiusX(), EPS);
-        assertEquals(0.52f, near.radiusY(), EPS);
+        FrameParams near = controller.frame(0f, 2f, 70f, 70f, 1f, false);
+        assertEquals(0.20f, near.radiusX(), EPS);
+        assertEquals(0.30f, near.radiusY(), EPS);
+        FrameParams far = controller.frame(0f, 8f, 70f, 70f, 1f, false);
+        assertEquals(0.05f, far.radiusX(), EPS);
+        assertEquals(0.075f, far.radiusY(), EPS);
+        FrameParams bowZoom = controller.frame(0f, 4f, 59.5f, 70f, 1f, false);
+        assertTrue(bowZoom.radiusX() > config.ellipseRadiusX);
+        assertTrue(bowZoom.radiusY() > config.ellipseRadiusY);
         config.distanceCompensation = false;
-        FrameParams off = controller.frame(0f, 2f, 1f, false);
-        assertEquals(0.16f, off.radiusX(), EPS);
+        FrameParams off = controller.frame(0f, 2f, 59.5f, 70f, 1f, false);
+        assertEquals(0.10f, off.radiusX(), EPS);
+        assertEquals(0.15f, off.radiusY(), EPS);
     }
 
     @Test
@@ -122,7 +129,7 @@ class MaskMathTest {
     void idleControllerProducesNoFrame() {
         ClearAimController controller = new ClearAimController(new Config());
         controller.tick(new AimInput(Perspective.THIRD_PERSON_BACK, HeldItem.EMPTY, HeldItem.EMPTY, null));
-        assertEquals(null, controller.frame(0.5f, 4f, 1f, false));
+        assertEquals(null, controller.frame(0.5f, 4f, 70f, 70f, 1f, false));
     }
 
     @Test

@@ -38,15 +38,19 @@ object ClearAimEras {
     }
 
     /** mixins.json の "client" 配列に入れる Mixin クラス (パッケージ io.github.yoima.clearthirdpersonaim.mixin からの相対名)。 */
-    fun mixins(era: String): List<String> = when (era) {
+    fun mixins(era: String, needsGameRendererFovAccessor: Boolean): List<String> = when (era) {
         // 1.21.1 は LevelRenderer#renderLevel の引数に実際の射影行列が渡るので、GameRenderer への注入は無い。
         "e1" -> listOf(
+            "GameRendererFovAccessor",
+            "GuiCrosshairMixin",
             "legacy.EntityRenderDispatcherMixin",
             "legacy.ItemInHandLayerMixin",
             "legacy.LevelRendererMixin",
             "legacy.LivingEntityRendererMixin",
         )
         else -> buildList {
+            if (needsGameRendererFovAccessor) add("GameRendererFovAccessor")
+            add("GuiCrosshairMixin")
             add("modern.EntityRenderDispatcherMixin")
             add("modern.GameRendererMixin")
             add("modern.ItemInHandLayerMixin")
@@ -58,5 +62,6 @@ object ClearAimEras {
     }
 
     /** processResources の expand 用 (JSON 配列の中身)。 */
-    fun mixinsJson(era: String): String = mixins(era).joinToString(", ") { "\"$it\"" }
+    fun mixinsJson(era: String, needsGameRendererFovAccessor: Boolean): String =
+        mixins(era, needsGameRendererFovAccessor).joinToString(", ") { "\"$it\"" }
 }

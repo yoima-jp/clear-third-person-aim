@@ -2,6 +2,8 @@
 
 [日本語](#日本語) | [English](#english)
 
+[Modrinth](https://modrinth.com/project/clear-third-person-aim) | [Source](https://github.com/yoima-jp/clear-third-person-aim) | [Issues](https://github.com/yoima-jp/clear-third-person-aim/issues)
+
 ## 日本語
 
 ### 概要
@@ -43,6 +45,8 @@
 
 ワールド内で設定画面を開くと、変更をその場でプレビューできます。キー割り当て画面の **「エイム時の透明化を切り替え」** は全体の有効・無効を切り替えます（既定では未割り当て）。
 
+透明化が発動している背面三人称視点では、既定でクロスヘアを表示します。「見た目」の「クロスヘアを表示」で切り替えられます。
+
 ### 設定ファイル
 
 設定は `config/clear_third_person_aim.json` に保存されます。数値は読み込み時に下表の範囲へ収められます。壊れたファイルは `.broken` に退避して、既定値で作り直します。
@@ -60,17 +64,18 @@
 | 前面視点でも有効 | `activeInFrontView` | `false` | — |
 | モード | `mode` | `AIM_ELLIPSE` | `FULL_BODY` / `UPPER_BODY` / `AIM_ELLIPSE` |
 | 残す不透明度 | `remainingOpacity` | `0.2` | `0.0–1.0` |
-| 楕円の横半径 | `ellipseRadiusX` | `0.16` | `0.02–1.0` |
-| 楕円の縦半径 | `ellipseRadiusY` | `0.26` | `0.02–1.0` |
+| 楕円の横半径 | `ellipseRadiusX` | `0.10` | `0.02–1.0` |
+| 楕円の縦半径 | `ellipseRadiusY` | `0.15` | `0.02–1.0` |
 | 境界のぼかし | `feather` | `0.06` | `0.0–0.5` |
-| カメラ距離で半径を補正 | `distanceCompensation` | `true` | — |
-| 手持ちアイテムも透明化 | `hideHeldItems` | `false` | — |
+| 距離・視野角で半径を補正 | `distanceCompensation` | `true` | — |
+| 手持ちアイテムも透明化 | `hideHeldItems` | `true` | — |
+| クロスヘアを表示 | `showCrosshair` | `true` | — |
 | 切り替え方 | `transition` | `FADE` | `INSTANT` / `FADE` |
 | フェードイン時間 | `fadeInMs` | `150` ms | `0–2000` ms |
 | フェードアウト時間 | `fadeOutMs` | `250` ms | `0–2000` ms |
 | 簡易半透明を強制 | `forceFallbackRenderer` | `false` | — |
 
-「楕円の横半径」と「楕円の縦半径」は画面の高さに対する比率です。追加アイテムにはアイテム ID（例: `somemod:longbow`）を指定します。
+「楕円の横半径」と「楕円の縦半径」は画面の高さに対する比率です。半径補正は実際のカメラ距離と視野角に合わせて楕円の大きさを変えます。弓を引いて視野角が狭まる場合にも反映されます。既存の設定ファイルに保存された値は維持されます。追加アイテムにはアイテム ID（例: `somemod:longbow`）を指定します。
 
 ### シェーダーパックと制限
 
@@ -132,6 +137,8 @@ The mod does not work in first person. The front-facing third-person view is dis
 
 Open the settings screen in a world to preview changes live. The **“Toggle Aim Transparency”** key binding enables or disables the feature (unbound by default).
 
+The crosshair appears by default while transparency is active in the back third-person view. Toggle it with **Show crosshair** on the Look page.
+
 ### Configuration file
 
 Settings are saved to `config/clear_third_person_aim.json`. Numeric values are clamped to the ranges below when loaded. If the file is corrupted, it is backed up as `.broken` and recreated with defaults.
@@ -149,17 +156,18 @@ Settings are saved to `config/clear_third_person_aim.json`. Numeric values are c
 | Front view too | `activeInFrontView` | `false` | — |
 | Mode | `mode` | `AIM_ELLIPSE` | `FULL_BODY` / `UPPER_BODY` / `AIM_ELLIPSE` |
 | Remaining opacity | `remainingOpacity` | `0.2` | `0.0–1.0` |
-| Ellipse width | `ellipseRadiusX` | `0.16` | `0.02–1.0` |
-| Ellipse height | `ellipseRadiusY` | `0.26` | `0.02–1.0` |
+| Ellipse width | `ellipseRadiusX` | `0.10` | `0.02–1.0` |
+| Ellipse height | `ellipseRadiusY` | `0.15` | `0.02–1.0` |
 | Edge softness | `feather` | `0.06` | `0.0–0.5` |
-| Adjust for camera distance | `distanceCompensation` | `true` | — |
-| Include held items | `hideHeldItems` | `false` | — |
+| Adjust for distance and FOV | `distanceCompensation` | `true` | — |
+| Include held items | `hideHeldItems` | `true` | — |
+| Show crosshair | `showCrosshair` | `true` | — |
 | Switching | `transition` | `FADE` | `INSTANT` / `FADE` |
 | Fade-in time | `fadeInMs` | `150` ms | `0–2000` ms |
 | Fade-out time | `fadeOutMs` | `250` ms | `0–2000` ms |
 | Force simple translucency | `forceFallbackRenderer` | `false` | — |
 
-Ellipse width and height are ratios of screen height. Enter item IDs for extra items, for example `somemod:longbow`.
+Ellipse width and height are ratios of screen height. Radius compensation follows the actual camera distance and FOV, including bow zoom. Values in existing config files are preserved. Enter item IDs for extra items, for example `somemod:longbow`.
 
 ### Shader packs and limitations
 

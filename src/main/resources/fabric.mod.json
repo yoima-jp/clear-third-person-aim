@@ -6,6 +6,11 @@
   "description": "Makes your own player model transparent only where it blocks your aim in third person view.",
   "authors": ["yoima-jp"],
   "license": "MIT",
+  "contact": {
+    "homepage": "https://modrinth.com/project/clear-third-person-aim",
+    "issues": "https://github.com/yoima-jp/clear-third-person-aim/issues",
+    "sources": "https://github.com/yoima-jp/clear-third-person-aim"
+  },
   "icon": "assets/clear_third_person_aim/icon.png",
   "environment": "client",
   "entrypoints": {

@@ -56,14 +56,17 @@ public final class ClearAimController {
      * このフレームの透明化パラメータ。追加の描画が不要なら null (バニラと同じ描画パスを通す)。
      *
      * @param cameraDistance 三人称カメラとプレイヤーの距離 (ブロック)
+     * @param currentFovDegrees 実際にワールド描画に使う視野角 (度)
+     * @param baseFovDegrees    ユーザー設定の視野角 (度)
      * @param playerScale    プレイヤーのスケール属性 (通常 1)
      * @param crouching      しゃがんでいるか
      */
-    public FrameParams frame(float partialTick, float cameraDistance, float playerScale, boolean crouching) {
+    public FrameParams frame(float partialTick, float cameraDistance, float currentFovDegrees, float baseFovDegrees,
+                             float playerScale, boolean crouching) {
         if (fade.isIdle()) return null;
         float progress = fade.progress(partialTick);
         if (progress <= 0f) return null;
-        float scale = config.distanceCompensation ? MaskMath.distanceScale(cameraDistance) : 1f;
+        float scale = config.distanceCompensation ? MaskMath.projectionScale(cameraDistance, currentFovDegrees, baseFovDegrees) : 1f;
         return new FrameParams(config.mode, progress, config.remainingOpacity,
                 config.ellipseRadiusX * scale, config.ellipseRadiusY * scale, config.feather,
                 MaskMath.waistHeight(playerScale, crouching), config.hideHeldItems);

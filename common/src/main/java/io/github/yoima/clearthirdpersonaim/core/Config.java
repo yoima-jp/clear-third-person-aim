@@ -51,14 +51,17 @@ public final class Config {
     /** 透明化した部分に残す不透明度。0 で完全に見えない。 */
     public float remainingOpacity = 0.2f;
     /** 楕円の横半径 (画面の高さに対する比率)。 */
-    public float ellipseRadiusX = 0.16f;
+    public float ellipseRadiusX = 0.10f;
     /** 楕円の縦半径 (画面の高さに対する比率)。 */
-    public float ellipseRadiusY = 0.26f;
+    public float ellipseRadiusY = 0.15f;
     /** 楕円境界のぼかし幅 (正規化距離 d に対する幅)。 */
     public float feather = 0.06f;
+    /** 保存済み設定との互換性のためキー名を維持する。実際には距離と視野角の両方を補正する。 */
     public boolean distanceCompensation = true;
-    /** true なら手に持った武器も本体と一緒に透ける。既定では弓を見えたままにする。 */
-    public boolean hideHeldItems = false;
+    /** true なら手に持った武器も本体と一緒に透ける。照準を遮るアイテムも含めるため既定で有効。 */
+    public boolean hideHeldItems = true;
+    /** 透明化が発動している背面三人称視点で、バニラのクロスヘアを表示する。 */
+    public boolean showCrosshair = true;
 
     public TransitionMode transition = TransitionMode.FADE;
     public int fadeInMs = 150;
@@ -92,6 +95,7 @@ public final class Config {
         feather = c.feather;
         distanceCompensation = c.distanceCompensation;
         hideHeldItems = c.hideHeldItems;
+        showCrosshair = c.showCrosshair;
         transition = c.transition;
         fadeInMs = c.fadeInMs;
         fadeOutMs = c.fadeOutMs;
@@ -104,8 +108,8 @@ public final class Config {
      */
     public void clamp(Consumer<String> warn) {
         remainingOpacity = clampFloat("remainingOpacity", remainingOpacity, 0f, 1f, 0.2f, warn);
-        ellipseRadiusX = clampFloat("ellipseRadiusX", ellipseRadiusX, MIN_RADIUS, MAX_RADIUS, 0.16f, warn);
-        ellipseRadiusY = clampFloat("ellipseRadiusY", ellipseRadiusY, MIN_RADIUS, MAX_RADIUS, 0.26f, warn);
+        ellipseRadiusX = clampFloat("ellipseRadiusX", ellipseRadiusX, MIN_RADIUS, MAX_RADIUS, 0.10f, warn);
+        ellipseRadiusY = clampFloat("ellipseRadiusY", ellipseRadiusY, MIN_RADIUS, MAX_RADIUS, 0.15f, warn);
         feather = clampFloat("feather", feather, 0f, MAX_FEATHER, 0.06f, warn);
         fadeInMs = clampInt("fadeInMs", fadeInMs, 0, MAX_FADE_MS, warn);
         fadeOutMs = clampInt("fadeOutMs", fadeOutMs, 0, MAX_FADE_MS, warn);

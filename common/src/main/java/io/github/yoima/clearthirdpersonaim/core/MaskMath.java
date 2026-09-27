@@ -79,6 +79,21 @@ public final class MaskMath {
     }
 
     /**
+     * プレイヤーの画面上の大きさに合わせる半径倍率。透視投影では同じ物体の見かけの大きさが
+     * 1 / (距離 × tan(視野角 / 2)) に比例する。弓は三人称でも視野角を狭めるため、距離だけでは追従できない。
+     */
+    public static float projectionScale(float cameraDistance, float currentFovDegrees, float baseFovDegrees) {
+        float scale = distanceScale(cameraDistance);
+        if (currentFovDegrees > 0f && currentFovDegrees < 180f
+                && baseFovDegrees > 0f && baseFovDegrees < 180f) {
+            double currentTangent = Math.tan(Math.toRadians(currentFovDegrees * 0.5));
+            double baseTangent = Math.tan(Math.toRadians(baseFovDegrees * 0.5));
+            scale *= (float) (baseTangent / currentTangent);
+        }
+        return Math.max(MIN_DISTANCE_SCALE, Math.min(MAX_DISTANCE_SCALE, scale));
+    }
+
+    /**
      * UPPER_BODY の透明化の強さ。足元からの高さ {@code heightAboveFeet} が腰より上なら 1、下なら 0。
      *
      * @param heightAboveFeet ピクセルのワールド座標の、プレイヤー足元からの高さ (ブロック)

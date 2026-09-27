@@ -49,11 +49,11 @@ public final class ConfigScreen extends Screen {
 
     private static final int COLUMN_X = 8;
     private static final int COLUMN_WIDTH = 190;
-    private static final int ROW_HEIGHT = 20;
+    private static final int ROW_HEIGHT = 19;
     private static final int MAX_ROW_SPACING = 22;
-    /** 1 ページの最大行数 (見た目ページの 8 行)。低い画面ではこの行数が収まるよう行間を詰める。 */
-    private static final int MAX_ROWS = 8;
-    private static final int FIRST_ROW_Y = 44;
+    /** 1 ページの最大行数 (見た目ページの 9 行)。高さ 240 でもフッターと重ならないようにする。 */
+    private static final int MAX_ROWS = 9;
+    private static final int FIRST_ROW_Y = 40;
 
     private final Screen parent;
     private final Config config;
@@ -114,6 +114,7 @@ public final class ConfigScreen extends Screen {
                 rows.add(slider("feather", 0, Config.MAX_FEATHER, 0.01, () -> config.feather, v -> config.feather = (float) v, ConfigScreen::decimal));
                 rows.add(toggle("distance_compensation", () -> config.distanceCompensation, v -> config.distanceCompensation = v));
                 rows.add(toggle("hide_held_items", () -> config.hideHeldItems, v -> config.hideHeldItems = v));
+                rows.add(toggle("show_crosshair", () -> config.showCrosshair, v -> config.showCrosshair = v));
                 rows.add(toggle("force_fallback", () -> config.forceFallbackRenderer, v -> config.forceFallbackRenderer = v));
             }
             case TRANSITION -> {
@@ -146,7 +147,7 @@ public final class ConfigScreen extends Screen {
     private final class Rows {
         private int y = FIRST_ROW_Y;
         // 最小の GUI 高さ (240) でもフッターのボタンと重ならないよう、画面の高さから行間を決める。
-        private final int spacing = Math.max(ROW_HEIGHT + 1, Math.min(MAX_ROW_SPACING, (height - 28 - FIRST_ROW_Y) / MAX_ROWS));
+        private final int spacing = Math.max(ROW_HEIGHT, Math.min(MAX_ROW_SPACING, (height - 28 - FIRST_ROW_Y) / MAX_ROWS));
 
         void add(net.minecraft.client.gui.components.AbstractWidget widget) {
             widget.setX(COLUMN_X);
@@ -384,7 +385,7 @@ public final class ConfigScreen extends Screen {
 
     /**
      * AIM_ELLIPSE の楕円の輪郭を点線で描く。半径は距離補正込みの実際の値を使うので、スライダー操作や
-     * カメラの寄りに合わせて輪郭が動く。楕円の内側は塗らない (透け具合そのものを見せるため)。
+     * カメラの寄りや視野角の変化に合わせて輪郭が動く。楕円の内側は塗らない (透け具合そのものを見せるため)。
      */
     private void drawEllipseGuide(RectFiller filler) {
         FrameParams params = RenderHooks.frame();

@@ -9,6 +9,9 @@ import io.github.yoima.clearthirdpersonaim.core.Config;
 import io.github.yoima.clearthirdpersonaim.core.FrameParams;
 import io.github.yoima.clearthirdpersonaim.core.Perspective;
 import io.github.yoima.clearthirdpersonaim.render.RenderMethodSelector;
+//? if <26.1 {
+import io.github.yoima.clearthirdpersonaim.mixin.GameRendererFovAccessor;
+//?}
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -181,6 +184,18 @@ public final class ClearAimClient {
         *///?}
         Vec3 eyePos = player.getEyePosition(partialTick);
         float distance = (float) cameraPos.distanceTo(eyePos);
-        return controller.frame(partialTick, distance, player.getScale(), player.isCrouching());
+        //? if >=26.2 {
+        float currentFov = minecraft.gameRenderer.mainCamera().getFov();
+        //?} elif >=26.1 {
+        /*float currentFov = minecraft.gameRenderer.getMainCamera().getFov();
+        *///?} elif >=1.21.2 {
+        /*float currentFov = ((GameRendererFovAccessor) minecraft.gameRenderer)
+                .clearThirdPersonAim$invokeGetFov(minecraft.gameRenderer.getMainCamera(), partialTick, true);
+        *///?} else {
+        /*float currentFov = (float) ((GameRendererFovAccessor) minecraft.gameRenderer)
+                .clearThirdPersonAim$invokeGetFov(minecraft.gameRenderer.getMainCamera(), partialTick, true);
+        *///?}
+        return controller.frame(partialTick, distance, currentFov, minecraft.options.fov().get().floatValue(),
+                player.getScale(), player.isCrouching());
     }
 }

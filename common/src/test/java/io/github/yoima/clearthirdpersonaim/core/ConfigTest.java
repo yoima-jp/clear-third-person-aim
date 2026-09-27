@@ -31,11 +31,12 @@ class ConfigTest {
         assertFalse(c.activeInFrontView);
         assertEquals(TransparencyMode.AIM_ELLIPSE, c.mode);
         assertEquals(0.2f, c.remainingOpacity);
-        assertEquals(0.16f, c.ellipseRadiusX);
-        assertEquals(0.26f, c.ellipseRadiusY);
+        assertEquals(0.10f, c.ellipseRadiusX);
+        assertEquals(0.15f, c.ellipseRadiusY);
         assertEquals(0.06f, c.feather);
         assertTrue(c.distanceCompensation);
-        assertFalse(c.hideHeldItems);
+        assertTrue(c.hideHeldItems);
+        assertTrue(c.showCrosshair);
         assertEquals(TransitionMode.FADE, c.transition);
         assertEquals(150, c.fadeInMs);
         assertEquals(250, c.fadeOutMs);
@@ -149,6 +150,7 @@ class ConfigTest {
         c.feather = 0.1f;
         c.distanceCompensation = false;
         c.hideHeldItems = true;
+        c.showCrosshair = false;
         c.transition = TransitionMode.INSTANT;
         c.fadeInMs = 400;
         c.fadeOutMs = 800;
@@ -170,6 +172,7 @@ class ConfigTest {
         edited.remainingOpacity = 0.9f;
         edited.extraItemsWhileHolding = new ArrayList<>(List.of("a:b"));
         edited.forceFallbackRenderer = true;
+        edited.showCrosshair = false;
         edited.copyFrom(original);
         assertEquals(original.toJson(), edited.toJson());
     }

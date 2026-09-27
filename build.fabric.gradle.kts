@@ -157,7 +157,7 @@ tasks {
         filesMatching("fabric.mod.json") { expand(props) }
 
         val mixinJava = "JAVA_${requiredJava.majorVersion}"
-        val mixinList = ClearAimEras.mixinsJson(renderEra)
+        val mixinList = ClearAimEras.mixinsJson(renderEra, !(sc.current.parsed >= "26.1"))
         inputs.property("mixins", mixinList)
         filesMatching("*.mixins.json") { expand("java" to mixinJava, "mixins" to mixinList) }
 
