@@ -40,6 +40,7 @@
 - [x] キーバインド
 - [x] ja_jp / en_us
 - [x] Mod Menu 連携
+- [x] `/clearaim` で設定画面を開く (Fabric / NeoForge、Mod Menu 不要。全 10 構成の自動テストで確認)
 - [x] 再起動後も保持
 
 ## Phase 8: 互換性

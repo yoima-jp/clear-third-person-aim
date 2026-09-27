@@ -5,6 +5,12 @@ import io.github.yoima.clearthirdpersonaim.client.ClearAimClient;
 import io.github.yoima.clearthirdpersonaim.client.SelfTestLauncher;
 import io.github.yoima.clearthirdpersonaim.client.gui.ConfigScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+//? if >=26.1 {
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+//?} else {
+/*import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+*///?}
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 //? if >=26.1 {
@@ -24,6 +30,17 @@ public final class ClearThirdPersonAimFabric implements ClientModInitializer {
         /*KeyBindingHelper.registerKeyBinding(client.toggleKey());
         *///?}
         ClientTickEvents.END_CLIENT_TICK.register(client::tick);
+        // /clearaim で設定画面を開く (Mod Menu が無くても設定を変えられるように)。
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> dispatcher.register(
+                //? if >=26.1 {
+                ClientCommands.literal(ClearAimClient.COMMAND)
+                //?} else {
+                /*ClientCommandManager.literal(ClearAimClient.COMMAND)
+                *///?}
+                        .executes(context -> {
+                            client.requestConfigScreen();
+                            return 1;
+                        })));
         // 開発用の自作クライアントテスト (ゲームテスト API の無い 1.21.1 用)。-Dcta.selftest=true のときだけ動く。
         SelfTestLauncher.startIfRequested("Fabric", FabricLoader.getInstance().getConfigDir(), ConfigScreen::new);
     }

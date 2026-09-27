@@ -73,6 +73,7 @@ public final class AimScenario {
         setUpScene();
         runThirdPersonChecks();
         runConfigScreenCheck();
+        runCommandCheck();
         runKeyBindingCheck();
         runFirstPersonCheck();
     }
@@ -355,6 +356,20 @@ public final class AimScenario {
             ClearAimClient.get().config().mode = TransparencyMode.AIM_ELLIPSE;
             ClearAimClient.get().saveConfig();
         });
+    }
+
+    /** {@code /clearaim} で設定画面が開くこと (Mod Menu・MOD 一覧を使わない経路)。チャットから送るのと同じ経路で実行する。 */
+    private void runCommandCheck() {
+        driver.runOnClient(mc -> mc.player.connection.sendCommand(ClearAimClient.COMMAND));
+        driver.waitTicks(3);
+        String screen = driver.computeOnClient(mc -> {
+            var current = Screens.current(mc);
+            return current == null ? "none" : current.getClass().getName();
+        });
+        results.add("[command] /" + ClearAimClient.COMMAND + " opened: " + screen);
+        check(ConfigScreen.class.getName().equals(screen), "/" + ClearAimClient.COMMAND + " should open ConfigScreen, got " + screen);
+        driver.clickButton("gui.done");
+        driver.waitTicks(2);
     }
 
     /**

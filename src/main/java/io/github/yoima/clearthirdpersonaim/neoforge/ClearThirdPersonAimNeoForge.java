@@ -10,7 +10,9 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
+import net.minecraft.commands.Commands;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
@@ -31,6 +33,12 @@ public final class ClearThirdPersonAimNeoForge {
             event.register(client.toggleKey());
         });
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, event -> client.tick(Minecraft.getInstance()));
+        // /clearaim で設定画面を開く (MOD 一覧を開かなくても設定を変えられるように)。
+        NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher().register(
+                Commands.literal(ClearAimClient.COMMAND).executes(context -> {
+                    client.requestConfigScreen();
+                    return 1;
+                })));
         // Mods 画面の「設定」ボタンから開く。
         modContainer.registerExtensionPoint(IConfigScreenFactory.class, (container, parent) -> new ConfigScreen(parent));
         SelfTestLauncher.startIfRequested("NeoForge", FMLPaths.CONFIGDIR.get(), parent ->

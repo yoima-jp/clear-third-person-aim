@@ -2,6 +2,7 @@ package io.github.yoima.clearthirdpersonaim.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.yoima.clearthirdpersonaim.ClearThirdPersonAim;
+import io.github.yoima.clearthirdpersonaim.client.gui.ConfigScreen;
 import io.github.yoima.clearthirdpersonaim.core.AimTransparencyRenderer;
 import io.github.yoima.clearthirdpersonaim.core.ClearAimController;
 import io.github.yoima.clearthirdpersonaim.core.Config;
@@ -24,6 +25,9 @@ import java.nio.file.Path;
 public final class ClearAimClient {
     private static ClearAimClient instance;
 
+    /** 設定画面を開くクライアントコマンド名 ({@code /clearaim})。Mod Menu が無い環境でも設定画面を開けるようにする。 */
+    public static final String COMMAND = "clearaim";
+
     private final Path configPath;
     private final Config config;
     private final ClearAimController controller;
@@ -33,6 +37,11 @@ public final class ClearAimClient {
     private boolean previewActive;
     /** クライアント tick の通算回数。自作テストドライバが「n tick 待つ」ために読む (描画スレッド以外からも読むので volatile)。 */
     private volatile long clientTicks;
+    /**
+     * コマンドから設定画面を開く要求。コマンドはチャット画面から実行され、実行直後にチャット画面が閉じられる
+     * (その時点で開いている画面が閉じられる) ので、その場では開かず次のクライアント tick で開く。
+     */
+    private boolean configScreenRequested;
 
     private ClearAimClient(Path configDir) {
         this.configPath = configDir.resolve(Config.FILE_NAME);
@@ -96,12 +105,29 @@ public final class ClearAimClient {
     /** クライアント tick の終わりに呼ぶ。 */
     public void tick(Minecraft minecraft) {
         clientTicks++;
+        if (configScreenRequested) {
+            configScreenRequested = false;
+            openConfigScreen(minecraft);
+        }
         while (toggleKey.consumeClick()) toggleEnabled(minecraft);
         var input = AimInputs.capture(minecraft);
         // 一人称へ切り替えた瞬間はモデル自体が描かれなくなる。フェードの残りを持ち越して、
         // 三人称に戻した瞬間に透けた状態から始まらないようにリセットする。
         if (input != null && input.perspective() == Perspective.FIRST_PERSON) controller.resetFade();
         controller.tick(input, previewActive);
+    }
+
+    /** {@code /clearaim} から呼ぶ。実際に開くのは次の tick (理由は {@link #configScreenRequested})。 */
+    public void requestConfigScreen() {
+        configScreenRequested = true;
+    }
+
+    private static void openConfigScreen(Minecraft minecraft) {
+        //? if >=26.2 {
+        minecraft.gui.setScreen(new ConfigScreen(null));
+        //?} else {
+        /*minecraft.setScreen(new ConfigScreen(null));
+        *///?}
     }
 
     public long clientTicks() {

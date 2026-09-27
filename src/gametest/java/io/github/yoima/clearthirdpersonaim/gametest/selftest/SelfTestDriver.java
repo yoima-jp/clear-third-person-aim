@@ -2,6 +2,7 @@ package io.github.yoima.clearthirdpersonaim.gametest.selftest;
 
 import io.github.yoima.clearthirdpersonaim.client.ClearAimClient;
 import io.github.yoima.clearthirdpersonaim.gametest.ClientTestDriver;
+import io.github.yoima.clearthirdpersonaim.gametest.Screens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -171,21 +172,12 @@ final class SelfTestDriver implements ClientTestDriver {
         waitTicks(1);
     }
 
-    /** リソース読み込み画面などのオーバーレイが出ていないか。 */
     static boolean hasNoOverlay(Minecraft m) {
-        //? if >=26.2 {
-        return m.gui.overlay() == null;
-        //?} else {
-        /*return m.getOverlay() == null;
-        *///?}
+        return Screens.noOverlay(m);
     }
 
     static Screen currentScreen(Minecraft m) {
-        //? if >=26.2 {
-        return m.gui.screen();
-        //?} else {
-        /*return m.screen;
-        *///?}
+        return Screens.current(m);
     }
 
     /** 画面にマウスの押下と解放を送る (GUI 座標)。 */

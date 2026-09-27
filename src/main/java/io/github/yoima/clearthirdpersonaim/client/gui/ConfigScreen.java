@@ -274,15 +274,27 @@ public final class ConfigScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (cancelled) config.copyFrom(original);
-        ClearAimClient.get().saveConfig();
-        ClearAimClient.get().setPreviewActive(false);
-        if (cameraBeforePreview != null) minecraft.options.setCameraType(cameraBeforePreview);
         //? if >=26.2 {
         minecraft.gui.setScreen(parent);
         //?} else {
         /*minecraft.setScreen(parent);
         *///?}
+    }
+
+    /**
+     * 画面が外されたとき (完了・キャンセル・Esc のほか、切断などで別の画面に置き換えられたときも) に呼ばれる。
+     * 後片付けをここに集めて、どの閉じ方でもプレビューとカメラが元に戻り、設定が保存されるようにする。
+     */
+    @Override
+    public void removed() {
+        super.removed();
+        if (cancelled) config.copyFrom(original);
+        ClearAimClient.get().saveConfig();
+        ClearAimClient.get().setPreviewActive(false);
+        if (cameraBeforePreview != null) {
+            minecraft.options.setCameraType(cameraBeforePreview);
+            cameraBeforePreview = null;
+        }
     }
 
     private Component statusLine() {
