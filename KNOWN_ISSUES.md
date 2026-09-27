@@ -8,22 +8,23 @@
   - 防具・マント・手持ちアイテムは不透明のまま。
   - パーツを個別に半透明で描くので、重なった内側 (胴体の裏の腕など) がうっすら透ける。自動テストの「不透明度 0.5 と理想の 50% ブレンドの差」は、オフスクリーン合成が平均 3.6、フォールバックが平均 7.0 (26.3 Fabric)。
 - 試したこと: Iris 使用中にオフスクリーン合成をそのまま動かす案は、エンティティ描画がシェーダーパック側の G バッファに流れるため採用していない (合成先・深度の意味がパックごとに異なり、正しく動く保証が無い)。
-- 残る影響: シェーダーパック使用中は「エイムの邪魔になる部分だけ透ける」効果が弱くなる。クラッシュはしない (Iris + 自作最小シェーダーパックで自動テスト済み)。
+- 残る影響: シェーダーパック使用中は「エイムの邪魔になる部分だけ透ける」効果が弱くなる。自作最小シェーダーパックでの自動テストは実施済み。26.2 NeoForge の開発環境で生じる描画検証時のクラッシュは K-003 を参照。
 
 ## K-002 Fabric のクライアントゲームテスト API が無い環境
 - できないこと: Fabric 1.21.1 と NeoForge (全バージョン) には Fabric のクライアントゲームテスト API が無い。
 - 対応: 同じシナリオを自作ドライバ (`runSelfTest`) で実行している (DECISIONS D-009)。ワールド作成・入力・撮影を自前で行うので、Fabric の API と比べて入力の再現方法 (キーマッピング・画面イベントを直接呼ぶ) が異なる。
 - ディスプレイの無い環境 (Linux CI) での実行は未確認。`xvfb-run` を前に付けて実行する想定。
 
-## K-003 26.2 NeoForge + Iris 1.11.4 + シェーダーパックでクラッシュする
+## K-003 26.2 NeoForge の開発環境で Iris 1.11.4 + シェーダーパックがクラッシュする
 - 症状: シェーダーパック有効時、Iris の手描画 (`HandRenderer`) 中に `GlCommandEncoder.validateDraw` の `ArrayIndexOutOfBoundsException` でクラッシュする。
-- 試したこと: この MOD の Mixin をすべて無効にしても再現、手描画用シェーダープログラムを追加しても変化なし、Blaze3D 検証レイヤーを切っても再現。Iris のパック無し構成と、同じ Iris・パックの Fabric 構成は PASS (`testing/investigations/26.2-neoforge-iris-shader.md`)。
-- 見立て: Iris の NeoForge 26.2 版側の問題。この MOD には回避策を入れていない。
+- 原因: Iris 1.11.4 の `MixinRenderPipeline` が頂点形式の配列を 16 枠から 1 枠に置き換える。NeoForge の開発環境で有効な OpenGL 描画検証が 2 枠目を読むと例外になる。[Iris の既知の報告](https://github.com/IrisShaders/Iris/issues/3304)と、この環境のスタック・JAR のバイトコードが一致する。
+- 切り分け: この MOD の Mixin をすべて無効にしても再現。手描画用シェーダープログラムの追加や、既存の Blaze3D 検証レイヤー設定を切っても変化しない。Iris のパック無し構成と、同じ Iris・パックの Fabric 構成は PASS。
+- 開発時の回避: ゲーム JVM に `-Dneoforge.disableGlValidation=true` を渡すと、同じ構成の `runSelfTest` が `RESULT: PASS`。描画検証が無効になるため、MOD 単体の検証では使用しない。本番環境ではこの検証は既定で無効。この MOD に Iris の配列を修正するコードは入れていない。詳細は `testing/investigations/26.2-neoforge-iris-shader.md`。
 
 ## K-004 26.1.2 Fabric + Sodium の自動テストが撮影中に終了する
-- 症状: Fabric のクライアントゲームテスト API のスクリーンショット処理 (撮影のためにゲーム描画を直接呼ぶ) で、Sodium 0.9.2 が `Global terrain uniforms have not been updated` を投げてテストが中断する。Iris を加えても同じ。最初の撮影 (MOD の透明化はまだ無効の状態) で起きる。
-- 対応: テストが中断したとき誤って `RESULT: PASS` と出していた問題は修正した (`testing/investigations/26.1.2-fabric-exit-code.md`)。MOD 側の回避策は入れていない。
-- 残る影響: 26.1.2 Fabric + Sodium の組み合わせは自動テストで検証できていない。通常のプレイでの動作は未確認 (撮影処理に固有の問題と見ている)。
+- 症状: Fabric のクライアントゲームテスト API の最初のスクリーンショットで、Sodium 0.9.2 が `Global terrain uniforms have not been updated` を投げてテストが中断する。Iris を加えたパック無し構成でも同じ。MOD の透明化はまだ無効の状態。
+- 原因: 使用中の Fabric client game test API `5.1.0+0a5283664c` は撮影時に `GameRenderer.extract()` と `render()` を直接呼ぶが、先に必要な `update()` を呼ばない。Sodium は `update()` 経由で準備される terrain uniform が無いまま描画されると例外を投げる。[Fabric API issue #5466](https://github.com/FabricMC/fabric-api/issues/5466) とローカルのスタック・JAR のバイトコードが一致する。
+- 対応と影響: テスト中断を誤って `RESULT: PASS` と出していた問題は修正済み。撮影経路そのものは修正しておらず、26.1.2 Fabric + Sodium / Iris (パック無し) の自動テストは未完了。Iris + シェーダーパック構成は同じテストで PASS しているが、差の理由は未特定。通常プレイでの動作は未確認。詳細は `testing/investigations/26.1.2-fabric-exit-code.md`。
 
 ## K-005 互換テストの環境調整 (本番の動作には影響しない)
 - NeoForge の開発環境は Blaze3D の検証レイヤーが既定で有効で、Sodium / Iris が検証用のラッパー型を OpenGL の型へキャストして落ちる。本番は既定で無効なので、互換構成のテストだけ切っている (`testing/neoforge-compat/`)。MOD 単体のテストは検証レイヤー有効のまま実行し、この MOD の Blaze3D の使い方が検証を通ることも確認している。
